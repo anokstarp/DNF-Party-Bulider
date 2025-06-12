@@ -1,26 +1,17 @@
 import streamlit as st
 import pandas as pd
-<<<<<<< HEAD
-import random, statistics
-import subprocess, ast
-from itertools import combinations
-
-dundamData = subprocess.check_output(
-    ['python', 'dundamCrawler.py'],
-    text=True
-)
-
-PRESETS = ast.literal_eval(dundamData)
-
-print('1')
-print(PRESETS)
-=======
 import random
 import statistics
 from itertools import combinations
 
 # ---------------------------------------------
 # 1) 데이터 프리셋 정의
+
+dundamData = subprocess.check_output(
+    ['python', 'dundamCrawler.py'],
+    text=True
+)
+
 PRESETS = {
     "프리셋 1": [
         ("찬호","크루",500),("찬호","뮤즈",428),("찬호","꼬홀",313),("찬호","메딕",304),
@@ -48,7 +39,9 @@ PRESETS = {
         ("G","딜러",40),("H","딜러",35),("I","딜러",25)
     ]
 }
->>>>>>> test
+
+# 여기 주석 처리하면 기존 프리셋 사용
+PRESETS = ast.literal_eval(dundamData)
 
 # ---------------------------------------------
 # 2) 파티 구성 알고리즘
