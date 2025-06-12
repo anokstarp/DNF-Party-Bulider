@@ -2,20 +2,29 @@ import streamlit as st
 import pandas as pd
 import random
 import statistics
-import subprocess, ast
+import subprocess, ast, sys
 from itertools import combinations
 
 # ---------------------------------------------
 # 1) 외부 크롤러로부터 데이터 프리셋 로드
 #    dundamCrawler.py 출력 형식: Python dict 문자열 형태의 PRESETS
 try:
-    crawled = subprocess.check_output(
-        ['python', 'dundamCrawler.py'], text=True
+    # 현재 실행하는 파이썬 인터프리터로 크롤러 실행
+    raw = subprocess.check_output(
+        [sys.executable, "dundamCrawler.py"],
+        text=True,
+        stderr=subprocess.STDOUT
     )
-    PRESETS = ast.literal_eval(crawled)
+    PRESETS = ast.literal_eval(raw)
 except Exception as e:
-    st.error(f"데이터 크롤러 로드 실패: {e}")
-    PRESETS = {}
+    st.warning(f"크롤러 로드 실패({e!r}), 기본 프리셋으로 대체합니다.")
+    # 최소 동작할 기본 프리셋
+    PRESETS = {
+        "기본 예시": [
+            ("테스트","버퍼",300),("테스트","딜러1",10),
+            ("테스트","딜러2",20),("테스트","딜러3",30),
+        ]
+    }
 
 # ---------------------------------------------
 # 2) 파티 구성 및 최적화 알고리즘
