@@ -1,51 +1,124 @@
 import streamlit as st
 import pandas as pd
-import random, statistics
+import random
+import statistics
 import subprocess, ast
 from itertools import combinations
 
-dundamData = subprocess.check_output(
-    ['python', 'dundamCrawler.py'],
-    text=True
-)
+# ---------------------------------------------
+# 1) 외부 크롤러로부터 데이터 프리셋 로드
+#    dundamCrawler.py 출력 형식: Python dict 문자열 형태의 PRESETS
+try:
+    crawled = subprocess.check_output(
+        ['python', 'dundamCrawler.py'], text=True
+    )
+    PRESETS = ast.literal_eval(crawled)
+except Exception as e:
+    st.error(f"데이터 크롤러 로드 실패: {e}")
+    PRESETS = {}
 
-PRESETS = ast.literal_eval(dundamData)
-
-print('1')
-print(PRESETS)
+# ---------------------------------------------
+# 2) 파티 구성 및 최적화 알고리즘
 
 def make_parties(data):
-    buffers = [{"player":p,"job":j,"power":pw} for p,j,pw in data if pw>=100]
-    dealers = [{"player":p,"job":j,"power":pw} for p,j,pw in data if pw<100]
-
+    # 분류
+    buffers = [{"player":p, "job":j, "power":pw} for p,j,pw in data if pw >= 100]
+    dealers = [{"player":p, "job":j, "power":pw} for p,j,pw in data if pw < 100]
     n = len(buffers)
-    used = [False]*len(dealers)
-    assign = [None]*n
-    def backtrack(i):
-        if i==n: return True
-        buf = buffers[i]
-        avail = [idx for idx,d in enumerate(dealers)
-                 if not used[idx] and d["player"]!=buf["player"]]
+
+    # 딜러 부족 체크
+    if len(dealers) < n * 3:
+        st.error(f"필요한 딜러: {n*3}, 현재 딜러: {len(dealers)}. 딜러가 부족합니다.")
+        return None, None
+
+    # 백트래킹 초기 배치
+    used = [False] * len(dealers)
+    assign = [None] * n
+
+    def backtrack(idx):
+        if idx == n:
+            return True
+        buf = buffers[idx]
+        avail = [i for i, d in enumerate(dealers)
+                 if not used[i] and d["player"] != buf["player"]]
         for combo in combinations(avail, 3):
-            if len({dealers[x]["player"] for x in combo})!=3: continue
-            for x in combo: used[x]=True
-            assign[i]=combo
-            if backtrack(i+1): return True
-            for x in combo: used[x]=False
+            if len({dealers[i]["player"] for i in combo}) != 3:
+                continue
+            for i in combo:
+                used[i] = True
+            assign[idx] = combo
+            if backtrack(idx + 1):
+                return True
+            for i in combo:
+                used[i] = False
         return False
 
     backtrack(0)
-    rows=[]
-    for pid, buf in enumerate(buffers,1):
-        rows.append([pid,"버퍼",buf["player"],buf["job"],buf["power"]])
-        for di in assign[pid-1]:
-            d=dealers[di]
-            rows.append([pid,"딜러",d["player"],d["job"],d["power"]])
-    return pd.DataFrame(rows, columns=["파티","역할","플레이어","직업군","전투력"])
 
-st.title("파티 구성 데모")
-preset = st.sidebar.selectbox("▶ 프리셋 선택", list(PRESETS.keys()))
-if st.sidebar.button("🚀 실행"):
-    df = make_parties(PRESETS[preset])
-    st.markdown(f"### [{preset}] 결과")
-    st.dataframe(df, use_container_width=True)
+    # 파티 리스트 생성
+    parties = []
+    for i, buf in enumerate(buffers):
+        party = {"buffer": buf, "dealers": [dealers[x] for x in assign[i]]}
+        parties.append(party)
+
+    # 파티딜량 계산 함수
+    def party_damage(p):
+        dealer_sum = sum(d["power"] for d in p["dealers"])
+        return dealer_sum * (p["buffer"]["power"] / 300)
+
+    # 힐 클라이밍: 표준편차 최소화
+    best_std = statistics.pstdev([party_damage(p) for p in parties])
+    improved = True
+    while improved:
+        improved = False
+        for a in range(n):
+            for b in range(a + 1, n):
+                for i in range(3):
+                    for j in range(3):
+                        A, B = parties[a], parties[b]
+                        da, db = A["dealers"][i], B["dealers"][j]
+                        # 교체 후보 생성
+                        newA = [d for d in A["dealers"] if d is not da] + [db]
+                        newB = [d for d in B["dealers"] if d is not db] + [da]
+                        # 중복 플레이어 검사
+                        if len({A["buffer"]["player"]} | {d["player"] for d in newA}) != 4:
+                            continue
+                        if len({B["buffer"]["player"]} | {d["player"] for d in newB}) != 4:
+                            continue
+                        # 적용 후 평가
+                        origA, origB = da, db
+                        A["dealers"][i], B["dealers"][j] = db, da
+                        new_std = statistics.pstdev([party_damage(p) for p in parties])
+                        if new_std < best_std:
+                            best_std = new_std
+                            improved = True
+                        else:
+                            # 복원
+                            A["dealers"][i], B["dealers"][j] = origA, origB
+    return parties, best_std
+
+# ---------------------------------------------
+# 3) Streamlit UI
+st.title("🎮 던파 파티 구성 도구")
+
+if not PRESETS:
+    st.warning("사용 가능한 데이터 프리셋이 없습니다.")
+else:
+    preset_name = st.sidebar.selectbox("■ 데이터 프리셋 선택", list(PRESETS.keys()))
+    if st.sidebar.button("▶ 파티 구성 실행"):
+        data = PRESETS[preset_name]
+        parties, std = make_parties(data)
+        if parties:
+            # 결과 테이블 준비
+            rows = []
+            for pid, p in enumerate(parties, 1):
+                dmg = sum(d["power"] for d in p["dealers"]) * (p["buffer"]["power"] / 300)
+                rows.append({"파티": pid, "역할": "버퍼", "플레이어": p["buffer"]["player"],
+                             "직업군": p["buffer"]["job"], "전투력": p["buffer"]["power"],
+                             "파티딜량": round(dmg, 2)})
+                for d in p["dealers"]:
+                    rows.append({"파티": pid, "역할": "딜러", "플레이어": d["player"],
+                                 "직업군": d["job"], "전투력": d["power"], "파티딜량": ""})
+            df = pd.DataFrame(rows)
+            st.markdown(f"### [{preset_name}] 최종 표준편차: {std:.2f}")
+            st.dataframe(df, use_container_width=True)
