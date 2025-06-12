@@ -147,7 +147,7 @@ def make_parties(data):
         return None, None
 
     # 비허용 쌍을 set 집합으로
-    exclude_sets = [set(pair) for pair in EXCLUDE_PAIRS]
+    exclude_sets = [set(pair) for pair in XCLUDE_PAIRS]
 
     used = [False] * len(dealers)
     assign = [None] * n
