@@ -62,7 +62,10 @@ def make_parties(data):
                 used[i] = False
         return False
 
-    backtrack(0)
+    success = backtrack(0)
+    if not success:
+        st.error("❌ 유효한 파티 구성을 찾을 수 없습니다. 입력 데이터를 확인하세요.")
+        return None, None
 
     # 파티 리스트 생성
     parties = []
@@ -117,7 +120,8 @@ else:
     if st.sidebar.button("▶ 파티 구성 실행"):
         data = PRESETS[preset_name]
         parties, std = make_parties(data)
-        if parties:
+        if parties is None:
+            st.stop()
             # 결과 테이블 준비
             rows = []
             for pid, p in enumerate(parties, 1):
