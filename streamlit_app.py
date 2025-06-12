@@ -200,8 +200,7 @@ def make_parties(data):
 
     return parties, best_std
 
-# ---------------------------------------------
-# 3) Streamlit UI (커스텀 레이아웃 with 총딜량)
+# 3) Streamlit UI (표 형태 + 플레이어별 색상)
 st.title("🎮 던파 파티 구성 도구")
 st.sidebar.write("### 데이터 프리셋 선택")
 preset_name = st.sidebar.selectbox("", list(PRESETS.keys()))
@@ -215,32 +214,47 @@ if st.sidebar.button("🚀 구성 실행"):
     st.markdown(f"## {preset_name}")
     st.markdown(f"**최종 표준편차:** {std:.2f}")
 
+    # 1) 플레이어별 고유 색 맵 생성 (원하는 색으로 바꿔도 OK)
+    all_players = sorted({d['player'] for p in parties for d in ([p['buffer']] + p['dealers'])})
+    palette = ["#FFCCCC", "#CCFFCC", "#CCCCFF", "#FFFFCC", "#FFCCFF", "#CCFFFF"]
+    color_map = {pl: palette[i % len(palette)] for i, pl in enumerate(all_players)}
+
+    # 2) 파티별로 DataFrame 만들고 스타일 적용
     for idx, p in enumerate(parties, start=1):
-        st.markdown("---")
-        st.markdown(f"### 파티 {idx}")
-        cols = st.columns(5)
-        buf = p["buffer"]
-        # 버퍼 컬럼
-        cols[0].markdown(
-            f"**버퍼**\n"
-            f"**{buf['player']}**\n"
-            f"{buf['job']}\n"
-            f"{buf['power']:.1f}"
-        )
-        # 딜러 컬럼
-        for i, d in enumerate(p["dealers"]):
-            cols[i+1].markdown(
-                f"**딜**\n"
-                f"**{d['player']}**\n"
-                f"{d['job']}\n"
-                f"{d['power']:.1f}"
-            )
-        # 총딜량 컬럼
-        dmg = sum(d['power'] for d in p['dealers']) * (buf['power']/300)
-        cols[4].markdown(
-            f"**총딜량**\n"
-            f"{dmg:.2f}"
+        # 테이블용 리스트
+        rows = []
+        dmg = sum(d["power"] for d in p["dealers"]) * (p["buffer"]["power"]/300)
+        # 버퍼 행
+        rows.append({
+            "역할": "버퍼",
+            "플레이어": p["buffer"]["player"],
+            "직업군": p["buffer"]["job"],
+            "전투력": round(p["buffer"]["power"],1),
+            "파티딜량": round(dmg,2)
+        })
+        # 딜러 행들
+        for d in p["dealers"]:
+            rows.append({
+                "역할": "딜러",
+                "플레이어": d["player"],
+                "직업군": d["job"],
+                "전투력": round(d["power"],1),
+                "파티딜량": ""
+            })
+        df = pd.DataFrame(rows)
+
+        # Styler로 플레이어 셀에 배경색 입히기
+        def highlight_player(val):
+            # 플레이어 컬럼에만 적용
+            return f"background-color: {color_map.get(val, '')}" if val in color_map else ""
+        styled = (
+            df.style
+              .applymap(highlight_player, subset=["플레이어"])
+              .set_properties(**{"border": "1px solid #ddd", "text-align": "center"})
+              .hide_index()
         )
 
-    st.markdown("---")
+        st.markdown(f"### 파티 {idx}")
+        st.dataframe(styled, use_container_width=True)
+        st.markdown("---")
 
