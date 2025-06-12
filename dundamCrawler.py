@@ -34,14 +34,13 @@ def parse_int(val):
     except:
         return 0
 
-# ── 버프 점수 변환 ───────────────────────────────────────────
+# ── 플레이버프 변환 함수 ─────────────────────────────────────
 def parse_buff(val):
-    val_clean = val.replace(',', '').replace(' ', '')
     try:
-        return int(val_clean)
+        return int(val)
     except ValueError:
         try:
-            return float(val_clean)
+            return float(val)
         except ValueError:
             return 0
 
@@ -63,8 +62,11 @@ def scrape(user_name):
 
     items = []
     for scon in page.query_selector_all('div.scon'):
-        # CharacterName
+        # UserName
         name_el = scon.query_selector('div.seh_name span.name')
+        user_el = name_el.query_selector('span.introd.server') if name_el else None
+        user = user_el.inner_text().strip() if user_el else ''
+        # CharacterName
         char = name_el and page.evaluate('el => el.childNodes[0].nodeValue.trim()', name_el) or ''
         # Job
         job_el = scon.query_selector('div.seh_job li.sev')
@@ -96,20 +98,20 @@ def scrape(user_name):
             sa = scon.query_selector('div.seh_stat ul.stat_a li div.statc span.val')
             buff_el = sa
         raw = buff_el.inner_text().strip() if buff_el else ''
-        raw_clean = raw.replace(' ', '')
 
         if is_buffer:
-            digits = ''.join(ch for ch in raw_clean if ch.isdigit())
+            digits = ''.join(ch for ch in raw if ch.isdigit())
             buff_val = int(digits) // 10000 if digits else 0
         else:
-            if '억' in raw_clean:
-                maj, aft = raw_clean.split('억', 1)
+            if '억' in raw:
+                maj, aft = raw.split('억', 1)
+                maj = maj.strip()  # 공백 제거
                 nums = ''.join(ch for ch in aft if ch.isdigit())
                 buff_val = float(f"{maj}.{nums[0]}") if nums else float(f"{maj}.0")
             else:
-                buff_val = parse_buff(raw_clean)
+                buff_val = parse_buff(raw)
 
-        items.append({'label': None, 'char': char, 'job': job, 'rep': rep_num, 'buff': buff_val})
+        items.append({'user': user, 'label': None, 'char': char, 'job': job, 'rep': rep_num, 'buff': buff_val})
     ctx.close()
     return items
 
@@ -123,8 +125,7 @@ if __name__ == '__main__':
             itm['label'] = label
             all_items.append(itm)
 
-    # 그룹 생성
-    # 1) 흉몽: rep>52925, 각 label별 상위 4개
+    # 1) 흉몽: 각 label별 rep>52925 상위 4개
     h_items = []
     for label in set(i['label'] for i in all_items):
         lst = [i for i in all_items if i['label']==label and i['rep']>52925]
@@ -132,24 +133,21 @@ if __name__ == '__main__':
         h_items.extend(top4)
     # 2) 여신전: rep>48988
     y_items = [i for i in all_items if i['rep']>48988]
-    # 3) 애쥬어: rep>44929, 흉몽 제외
+    # 3) 애쥬어: rep>44929 제외 흉몽
     h_set = {(i['label'], i['char']) for i in h_items}
     a_items = [i for i in all_items if i['rep']>44929 and (i['label'], i['char']) not in h_set]
     # 4) 베누스: rep>41929
     b_items = [i for i in all_items if i['rep']>41929]
 
     def fmt(lst):
-        return ", ".join(f"(\"{i['label']}\",\"{i['job']}\",{i['buff']})" for i in lst)
+        return ", ".join(f'(\"{i['label']}\",\"{i['job']}\",{i['buff']})' for i in lst)
 
-    # print Python dict literal
-    import json
-    groups = {
-        "흉몽": h_items,
-        "여신전": y_items,
-        "애쥬어": a_items,
-        "베누스": b_items
-    }
-    # stdout 에 순수 JSON 한 줄로 출력
-    print(json.dumps(groups, ensure_ascii=False))
+    out = (
+        f'{{"흉몽": [{fmt(h_items)}],'
+        f'"여신전": [{fmt(y_items)}],'
+        f'"애쥬어": [{fmt(a_items)}],'
+        f'"베누스": [{fmt(b_items)}]}}'
+    )
+    print(repr(out))
     browser.close()
     p.stop()
