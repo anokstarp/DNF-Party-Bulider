@@ -8,8 +8,7 @@ XCLUDE_PAIRS = [
     ("경베", "현수"),
     
 ]
-# 내부에서 사용할 set 형태로 변환
-exclude_sets = [set(pair) for pair in EXCLUDE_PAIRS]
+
 
 # ---------------------------------------------
 # 1) 데이터 프리셋 정의
