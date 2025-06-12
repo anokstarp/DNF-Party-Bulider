@@ -224,7 +224,6 @@ if st.sidebar.button("🚀 구성 실행"):
         # 테이블용 리스트
         rows = []
         dmg = sum(d["power"] for d in p["dealers"]) * (p["buffer"]["power"]/300)
-        # 버퍼 행
         rows.append({
             "역할": "버퍼",
             "플레이어": p["buffer"]["player"],
@@ -232,7 +231,6 @@ if st.sidebar.button("🚀 구성 실행"):
             "전투력": round(p["buffer"]["power"],1),
             "파티딜량": round(dmg,2)
         })
-        # 딜러 행들
         for d in p["dealers"]:
             rows.append({
                 "역할": "딜러",
@@ -241,17 +239,22 @@ if st.sidebar.button("🚀 구성 실행"):
                 "전투력": round(d["power"],1),
                 "파티딜량": ""
             })
-        df = pd.DataFrame(rows)
+        df = pd.DataFrame(rows).reset_index(drop=True)
 
-        # Styler로 플레이어 셀에 배경색 입히기
+        # 플레이어별 고유 색 맵 (같은 코드 재사용)
         def highlight_player(val):
-            # 플레이어 컬럼에만 적용
-            return f"background-color: {color_map.get(val, '')}" if val in color_map else ""
+            return f"background-color: {color_map.get(val)}" if val in color_map else ""
+
         styled = (
             df.style
+              # 플레이어 컬럼만 색 입히기
               .applymap(highlight_player, subset=["플레이어"])
+              # 테두리·정렬 설정
               .set_properties(**{"border": "1px solid #ddd", "text-align": "center"})
-              .hide_index()
+              # 인덱스 숨기기(CSS)
+              .set_table_styles([
+                  {"selector": "th.row_heading, td.row_heading", "props": [("display", "none")]},
+              ])
         )
 
         st.markdown(f"### 파티 {idx}")
