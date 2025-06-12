@@ -4,6 +4,13 @@ import random
 import statistics
 from itertools import combinations
 
+XCLUDE_PAIRS = [
+    ("경베", "현수"),
+    
+]
+# 내부에서 사용할 set 형태로 변환
+exclude_sets = [set(pair) for pair in EXCLUDE_PAIRS]
+
 # ---------------------------------------------
 # 1) 데이터 프리셋 정의
 PRESETS = {
@@ -132,15 +139,16 @@ PRESETS = {
 
 # ---------------------------------------------
 # 2) 파티 구성 알고리즘
-
 def make_parties(data):
-    buffers = [{"player":p, "job":j, "power":pw} for p,j,pw in data if pw >= 100]
-    dealers = [{"player":p, "job":j, "power":pw} for p,j,pw in data if pw < 100]
+    buffers = [{"player":p,"job":j,"power":pw} for p,j,pw in data if pw >= 100]
+    dealers = [{"player":p,"job":j,"power":pw} for p,j,pw in data if pw < 100]
     n = len(buffers)
-
     if len(dealers) < n * 3:
         st.error(f"필요한 딜러: {n*3}, 현재 딜러: {len(dealers)}. 딜러가 부족합니다.")
         return None, None
+
+    # 비허용 쌍을 set 집합으로
+    exclude_sets = [set(pair) for pair in EXCLUDE_PAIRS]
 
     used = [False] * len(dealers)
     assign = [None] * n
@@ -149,30 +157,44 @@ def make_parties(data):
         if idx == n:
             return True
         buf = buffers[idx]
-        avail = [i for i, d in enumerate(dealers) if not used[i] and d["player"] != buf["player"]]
-        for combo in combinations(avail, 3):
-            if len({dealers[i]["player"] for i in combo}) != 3:
+        candidates = [i for i, d in enumerate(dealers)
+                      if not used[i] and d["player"] != buf["player"]]
+        for combo in combinations(candidates, 3):
+            # 파티 플레이어 집합
+            party_players = {buf["player"]} | {dealers[i]["player"] for i in combo}
+            # ① 플레이어 중복 체크 (버퍼≠딜러, 딜러간 서로 다른 유저)
+            if len(party_players) != 4:
                 continue
+            # ② 비허용 쌍 체크
+            if any(excl.issubset(party_players) for excl in exclude_sets):
+                continue
+
+            # 허용된 조합이면 사용 처리
             for i in combo:
                 used[i] = True
             assign[idx] = combo
             if backtrack(idx + 1):
                 return True
+            # 되돌리기
             for i in combo:
                 used[i] = False
         return False
 
-    if not backtrack(0):
+    success = backtrack(0)
+    if not success:
         return None, None
 
+    # 초기 파티 목록 생성
     parties = []
     for i, buf in enumerate(buffers):
-        parties.append({"buffer": buf, "dealers": [dealers[x] for x in assign[i]]})
+        parties.append({"buffer": buf,
+                        "dealers": [dealers[x] for x in assign[i]]})
 
+    # 파티딜량 계산 함수
     def party_damage(p):
         return sum(d["power"] for d in p["dealers"]) * (p["buffer"]["power"]/300)
 
-    # 힐 클라이밍 최적화
+    # 힐 클라이밍 단계에서도 스왑 후 비허용 쌍 검사 추가
     best_std = statistics.pstdev([party_damage(p) for p in parties])
     improving = True
     while improving:
@@ -183,12 +205,20 @@ def make_parties(data):
                     for bi in range(3):
                         A, B = parties[a], parties[b]
                         da, db = A["dealers"][ai], B["dealers"][bi]
+                        # 스왑 후 새로운 파티원 집합
                         newA = [d for d in A["dealers"] if d is not da] + [db]
                         newB = [d for d in B["dealers"] if d is not db] + [da]
-                        if len({A["buffer"]["player"]} | {d["player"] for d in newA}) != 4:
+                        # 플레이어 집합
+                        setA = {A["buffer"]["player"]} | {d["player"] for d in newA}
+                        setB = {B["buffer"]["player"]} | {d["player"] for d in newB}
+                        # 중복/비허용 쌍 체크
+                        if len(setA)!=4 or len(setB)!=4:
                             continue
-                        if len({B["buffer"]["player"]} | {d["player"] for d in newB}) != 4:
+                        if any(excl.issubset(setA) for excl in exclude_sets):
                             continue
+                        if any(excl.issubset(setB) for excl in exclude_sets):
+                            continue
+                        # 시도 및 평가
                         origA, origB = da, db
                         A["dealers"][ai], B["dealers"][bi] = db, da
                         new_std = statistics.pstdev([party_damage(p) for p in parties])
