@@ -6,10 +6,8 @@ from itertools import combinations
 
 # ---------------------------------------------
 # 1) 데이터 프리셋 정의
-# 필요한 만큼 프리셋을 추가하세요.
 PRESETS = {
     "프리셋 1": [
-        # 기본 데이터셋
         ("찬호","크루",500),("찬호","뮤즈",428),("찬호","꼬홀",313),("찬호","메딕",304),
         ("범규","크루",382),("범규","뮤즈",344),("범규","메딕",301),
         ("남석","크루",439),("남석","메딕",408),
@@ -29,7 +27,6 @@ PRESETS = {
         ("경베","뮤즈",2),("경베","배메",2),("경베","블레",2)
     ],
     "프리셋 2": [
-        # 예시: 다른 데이터셋
         ("A","버퍼",320),("B","버퍼",280),("C","버퍼",350),
         ("X","딜러",50),("Y","딜러",60),("Z","딜러",70),
         ("D","딜러",45),("E","딜러",55),("F","딜러",65),
@@ -41,17 +38,14 @@ PRESETS = {
 # 2) 파티 구성 알고리즘
 
 def make_parties(data):
-    # 버퍼·딜러 분류
     buffers = [{"player":p,"job":j,"power":pw} for p,j,pw in data if pw >= 100]
     dealers = [{"player":p,"job":j,"power":pw} for p,j,pw in data if pw < 100]
     n = len(buffers)
 
-    # 딜러 부족 체크
     if len(dealers) < n * 3:
         st.error(f"필요한 딜러: {n*3}, 현재 딜러: {len(dealers)}. 딜러가 부족합니다.")
         return None, None
 
-    # 백트래킹 초기 배치
     used = [False] * len(dealers)
     assign = [None] * n
 
@@ -64,41 +58,43 @@ def make_parties(data):
         for combo in combinations(candidates, 3):
             if len({dealers[i]["player"] for i in combo}) != 3:
                 continue
-            for i in combo: used[i] = True
+            for i in combo:
+                used[i] = True
             assign[idx] = combo
-            if backtrack(idx+1): return True
-            for i in combo: used[i] = False
+            if backtrack(idx + 1):
+                return True
+            for i in combo:
+                used[i] = False
         return False
 
-    backtrack(0)
+    success = backtrack(0)
+    if not success:
+        return None, None
 
-    # 파티 배열 생성
     parties = []
     for i, buf in enumerate(buffers):
-        party = {"buffer": buf, "dealers": [dealers[x] for x in assign[i]]}
-        parties.append(party)
+        parties.append({"buffer": buf, "dealers": [dealers[x] for x in assign[i]]})
 
-    # 힐 클라이밍으로 균등화
     def party_damage(p):
         return sum(d["power"] for d in p["dealers"]) * (p["buffer"]["power"]/300)
+
     best_std = statistics.pstdev([party_damage(p) for p in parties])
     improving = True
     while improving:
         improving = False
         for a in range(n):
-            for b in range(a+1, n):
+            for b in range(a + 1, n):
                 for ai in range(3):
                     for bi in range(3):
                         A, B = parties[a], parties[b]
                         da, db = A["dealers"][ai], B["dealers"][bi]
-                        # 스왑 후보
-                        newA = [x for x in A["dealers"] if x is not da] + [db]
-                        newB = [x for x in B["dealers"] if x is not db] + [da]
-                        # 중복 플레이어 체크
-                        if len({A["buffer"]["player"]} | {d["player"] for d in newA}) != 4: continue
-                        if len({B["buffer"]["player"]} | {d["player"] for d in newB}) != 4: continue
-                        # 적용 및 평가
-                        origA, origB = A["dealers"][ai], B["dealers"][bi]
+                        newA = [d for d in A["dealers"] if d is not da] + [db]
+                        newB = [d for d in B["dealers"] if d is not db] + [da]
+                        if len({A["buffer"]["player"]} | {d["player"] for d in newA}) != 4:
+                            continue
+                        if len({B["buffer"]["player"]} | {d["player"] for d in newB}) != 4:
+                            continue
+                        origA, origB = da, db
                         A["dealers"][ai], B["dealers"][bi] = db, da
                         new_std = statistics.pstdev([party_damage(p) for p in parties])
                         if new_std < best_std:
@@ -106,27 +102,41 @@ def make_parties(data):
                             improving = True
                         else:
                             A["dealers"][ai], B["dealers"][bi] = origA, origB
+
     return parties, best_std
 
 # ---------------------------------------------
-# 3) Streamlit UI
+# 3) Streamlit UI (커스텀 레이아웃)
 st.title("🎮 던파 파티 구성 도구")
-
-preset_name = st.sidebar.selectbox("■ 프리셋 선택", list(PRESETS.keys()))
-if st.sidebar.button("▶ 구성 실행"):
+st.sidebar.write("### 데이터 프리셋 선택")
+preset_name = st.sidebar.selectbox("", list(PRESETS.keys()))
+if st.sidebar.button("🚀 구성 실행"):
     data = PRESETS[preset_name]
     parties, std = make_parties(data)
     if parties is None:
+        st.error("유효한 파티 구성을 찾을 수 없습니다.")
         st.stop()
-    # 결과 테이블 생성
-    rows = []
-    for pid, p in enumerate(parties, 1):
-        dmg = sum(d["power"] for d in p["dealers"]) * (p["buffer"]["power"]/300)
-        rows.append({"파티": pid, "역할": "버퍼", "플레이어": p["buffer"]["player"],
-                     "직업군": p["buffer"]["job"], "전투력": p["buffer"]["power"], "파티딜량": round(dmg,2)})
-        for d in p["dealers"]:
-            rows.append({"파티": pid, "역할": "딜러", "플레이어": d["player"],
-                         "직업군": d["job"], "전투력": d["power"], "파티딜량": ""})
-    df = pd.DataFrame(rows)
-    st.markdown(f"### [{preset_name}] 최종 표준편차: {std:.2f}")
-    st.dataframe(df, use_container_width=True)
+
+    st.markdown(f"## {preset_name}")
+    st.markdown(f"**최종 표준편차:** {std:.2f}")
+    
+    for idx, p in enumerate(parties, start=1):
+        st.markdown("---")
+        st.markdown(f"### 파티 {idx}")
+        cols = st.columns(4)
+        buf = p["buffer"]
+        cols[0].markdown(
+            f"""**버퍼**
+**{buf['player']}**
+{buf['job']}
+{buf['power']:.1f}"""
+        )
+        for i, d in enumerate(p["dealers"]):
+            cols[i+1].markdown(
+                f"""**딜**
+**{d['player']}**
+{d['job']}
+{d['power']:.1f}"""
+            )
+
+    st.markdown("---")
