@@ -134,8 +134,8 @@ PRESETS = {
 # 2) 파티 구성 알고리즘
 
 def make_parties(data):
-    buffers = [{"player":p,"job":j,"power":pw} for p,j,pw in data if pw >= 100]
-    dealers = [{"player":p,"job":j,"power":pw} for p,j,pw in data if pw < 100]
+    buffers = [{"player":p, "job":j, "power":pw} for p,j,pw in data if pw >= 100]
+    dealers = [{"player":p, "job":j, "power":pw} for p,j,pw in data if pw < 100]
     n = len(buffers)
 
     if len(dealers) < n * 3:
@@ -149,9 +149,8 @@ def make_parties(data):
         if idx == n:
             return True
         buf = buffers[idx]
-        candidates = [i for i, d in enumerate(dealers)
-                      if not used[i] and d["player"] != buf["player"]]
-        for combo in combinations(candidates, 3):
+        avail = [i for i, d in enumerate(dealers) if not used[i] and d["player"] != buf["player"]]
+        for combo in combinations(avail, 3):
             if len({dealers[i]["player"] for i in combo}) != 3:
                 continue
             for i in combo:
@@ -163,8 +162,7 @@ def make_parties(data):
                 used[i] = False
         return False
 
-    success = backtrack(0)
-    if not success:
+    if not backtrack(0):
         return None, None
 
     parties = []
@@ -174,12 +172,13 @@ def make_parties(data):
     def party_damage(p):
         return sum(d["power"] for d in p["dealers"]) * (p["buffer"]["power"]/300)
 
+    # 힐 클라이밍 최적화
     best_std = statistics.pstdev([party_damage(p) for p in parties])
     improving = True
     while improving:
         improving = False
         for a in range(n):
-            for b in range(a + 1, n):
+            for b in range(a+1, n):
                 for ai in range(3):
                     for bi in range(3):
                         A, B = parties[a], parties[b]
@@ -215,8 +214,7 @@ if st.sidebar.button("🚀 구성 실행"):
 
     st.markdown(f"## {preset_name}")
     st.markdown(f"**최종 표준편차:** {std:.2f}")
-    
-    # 파티별 레이아웃: 버퍼(1), 딜러(3), 총딜량(1) = 5컬럼
+
     for idx, p in enumerate(parties, start=1):
         st.markdown("---")
         st.markdown(f"### 파티 {idx}")
@@ -224,24 +222,25 @@ if st.sidebar.button("🚀 구성 실행"):
         buf = p["buffer"]
         # 버퍼 컬럼
         cols[0].markdown(
-            f"**버퍼**  
-**{buf['player']}**  
-{buf['job']}  
-{buf['power']:.1f}"
+            f"**버퍼**\n"
+            f"**{buf['player']}**\n"
+            f"{buf['job']}\n"
+            f"{buf['power']:.1f}"
         )
-        # 딜러 3컬럼
+        # 딜러 컬럼
         for i, d in enumerate(p["dealers"]):
             cols[i+1].markdown(
-                f"**딜**  
-**{d['player']}**  
-{d['job']}  
-{d['power']:.1f}"
+                f"**딜**\n"
+                f"**{d['player']}**\n"
+                f"{d['job']}\n"
+                f"{d['power']:.1f}"
             )
         # 총딜량 컬럼
-        # party_damage 함수 inline
         dmg = sum(d['power'] for d in p['dealers']) * (buf['power']/300)
-        cols[4].markdown(f"**총딜량**  
-{dmg:.2f}")
+        cols[4].markdown(
+            f"**총딜량**\n"
+            f"{dmg:.2f}"
+        )
 
     st.markdown("---")
 
