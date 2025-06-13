@@ -148,6 +148,6 @@ if __name__ == '__main__':
         f'"애쥬어": [{fmt(a_items)}],'
         f'"베누스": [{fmt(b_items)}]}}'
     )
-    print(repr(out))
+    #print(repr(out))
     browser.close()
     p.stop()
