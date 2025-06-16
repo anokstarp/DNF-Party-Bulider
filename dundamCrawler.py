@@ -1,4 +1,5 @@
 import json
+import ast
 from urllib.parse import quote
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 
@@ -148,6 +149,8 @@ if __name__ == '__main__':
         f'"애쥬어": [{fmt(a_items)}],'
         f'"베누스": [{fmt(b_items)}]}}'
     )
-    #print(repr(out))
+    data = ast.literal_eval(out)
+    pretty = json.dumps(data, ensure_ascii=False, indent=2)
+    print(pretty)
     browser.close()
     p.stop()

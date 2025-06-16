@@ -243,7 +243,7 @@ def make_parties(data):
 # 3) Streamlit UI (표 형태 + 플레이어별 색상)
 st.title("🎮 던파 파티 구성 도구")
 st.sidebar.write("### 데이터 프리셋 선택")
-preset_name = st.sidebar.selectbox("", list(PRESETS.keys()))
+preset_name = st.sidebar.selectbox("프리셋", list(PRESETS.keys()))
 if st.sidebar.button("🚀 구성 실행"):
     data = PRESETS[preset_name]
     parties, std = make_parties(data)
@@ -281,6 +281,9 @@ if st.sidebar.button("🚀 구성 실행"):
             })
         df = pd.DataFrame(rows).reset_index(drop=True)
 
+        # 가정: df는 이미 생성된 상태
+        df["파티딜량"] = pd.to_numeric(df["파티딜량"], errors="coerce")
+        
         # 플레이어별 고유 색 맵 (같은 코드 재사용)
         def highlight_player(val):
             return f"background-color: {color_map.get(val)}" if val in color_map else ""
@@ -288,7 +291,7 @@ if st.sidebar.button("🚀 구성 실행"):
         styled = (
             df.style
               # 플레이어 컬럼만 색 입히기
-              .applymap(highlight_player, subset=["플레이어"])
+              .map(highlight_player, subset=["플레이어"])
               # 테두리·정렬 설정
               .set_properties(**{"border": "1px solid #ddd", "text-align": "center"})
               # 인덱스 숨기기(CSS)
@@ -296,6 +299,8 @@ if st.sidebar.button("🚀 구성 실행"):
                   {"selector": "th.row_heading, td.row_heading", "props": [("display", "none")]},
               ])
         )
+        
+        
 
         st.markdown(f"### 파티 {idx}")
         st.dataframe(styled, use_container_width=True)
