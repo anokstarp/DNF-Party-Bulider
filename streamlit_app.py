@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import random
 import statistics
+import subprocess
+import ast
 from itertools import combinations
 
 XCLUDE_PAIRS = [
