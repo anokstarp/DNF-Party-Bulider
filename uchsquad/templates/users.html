@@ -1,0 +1,36 @@
+<!-- templates/users.html -->
+{% extends 'base.html' %}
+{% block content %}
+
+{% if alert %}
+<script>
+  alert("{{ alert }}");
+</script>
+{% endif %}
+
+<h2>유저 관리</h2>
+<form action="{{ url_for('users.add_user') }}" method="post">
+  <input type="text" name="name" placeholder="유저 이름" required>
+  <input type="text" name="adventure" placeholder="모험단 이름" required>
+  <button type="submit">추가</button>
+</form>
+
+<table>
+  <thead><tr><th>이름</th><th>모험단</th><th>작업</th></tr></thead>
+  <tbody>
+    {% for u in users %}
+    <tr>
+      <td>{{ u.name }}</td>
+      <td>{{ u.adventure }}</td>
+      <td>
+        <form action="{{ url_for('users.delete_user') }}" method="post" style="display:inline;">
+          <input type="hidden" name="idx" value="{{ u.idx }}">
+          <button type="submit">삭제</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% endblock %}

@@ -1,0 +1,125 @@
+/* static/style.css */
+
+/* — 기본 레이아웃 — */
+body {
+  font-family: sans-serif;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 1rem;
+  line-height: 1.6;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+nav {
+  margin-top: 0.5rem;
+}
+
+nav a {
+  margin: 0 0.5rem;
+  text-decoration: none;
+  color: #007bff;
+}
+
+/* — 탭 스타일 — */
+.tabs {
+  display: flex;
+  border-bottom: 1px solid #ccc;
+  margin-bottom: 1rem;
+}
+
+.tabs button {
+  padding: 0.5rem 1rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.tabs button.active {
+  border-bottom: 2px solid #007bff;
+  font-weight: bold;
+}
+
+/* — 폼 요소 — */
+select {
+  padding: 0.4rem 0.6rem;
+  font-size: 0.9rem;
+}
+
+button {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+/* 버튼 비활성화 시 스타일 */
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* — 테이블 스타일 — */
+.table, table {
+  width: auto;              /* 내용에 딱 맞춘 너비 */
+  border-collapse: collapse;
+  font-size: 0.9rem;        /* 90% 폰트 크기 */
+  margin-top: 1rem;
+}
+
+th, td {
+  border: 1px solid #ddd;
+  padding: 0.4rem 0.8rem;    /* 세로 4px, 가로 8px */
+  text-align: left;
+  white-space: nowrap;      /* 줄 바꿈 방지 */
+}
+
+thead th {
+  background-color: #f0f0f0;
+  border-bottom: 2px solid #666;
+}
+
+tbody tr:nth-child(odd) {
+  background-color: #fafafa;
+}
+
+/* 중첩 테이블 (만약의 경우) */
+.nested-table td {
+  border: none;
+  padding: 0.2rem;
+}
+
+/* 일반 문단 스타일 */
+p {
+  margin-top: 1rem;
+  font-size: 0.9rem;
+}
+
+/* 체크박스를 cell 가운데 정렬 */
+table td input[type="checkbox"] {
+  display: block;
+  margin: 0 auto;
+}
+
+/*— 일반 버튼: 중간 크기 —*/
+button {
+  padding: 0.4rem 0.8rem;   /* 위아래 0.4, 좌우 0.8 */
+  font-size: 1rem;         /* 1rem 정도 */
+  line-height: 1.2;        /* 눌렀을 때 글자 눌리지 않도록 */
+}
+
+
+/* 버튼을 가로로 늘리고 동일한 크기로 */
+.order-col .btn-up,
+.order-col .btn-down {
+  display: inline-block;
+  flex: 1;                 /* 컨테이너 너비를 동일 분할 */
+  width: 100%;    
+  box-sizing: border-box;  
+  padding: 0.2rem 0;       /* 위아래만 약간 여백 */
+  font-size: 0.8rem;       
+  text-align: center;      
+  line-height: 1;          
+}

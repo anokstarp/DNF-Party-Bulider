@@ -1,0 +1,252 @@
+{% extends 'base.html' %}
+{% block content %}
+  {% if alert %}
+    <script>alert("{{ alert }}");</script>
+  {% endif %}
+
+  <h2>캐릭터 리스트</h2>
+
+  <!-- 1) 유저 선택 & 전체 갱신 -->
+  <div style="margin-bottom:1rem;">
+    <form id="select-form"
+          action="{{ url_for('characters.show_characters') }}"
+          method="get" style="display:inline;">
+      <select name="user_idx"
+              onchange="document.getElementById('select-form').submit()">
+        <option value="">— 유저 선택 —</option>
+        {% for u in users %}
+          <option value="{{ u.idx }}"
+            {% if selected_user and selected_user.idx == u.idx %}selected{% endif %}>
+            {{ u.name }} — {{ u.adventure }}
+          </option>
+        {% endfor %}
+      </select>
+    </form>
+
+    <form id="update-score-form"
+          action="{{ url_for('characters.update_score_for_user') }}"
+          method="post"
+          style="display:inline; margin-left:0.5rem;">
+      <input type="hidden" name="user_idx"   value="{{ selected_user.idx  if selected_user }}">
+      <input type="hidden" name="adventure"  value="{{ selected_user.adventure if selected_user }}">
+      <button id="update-btn" type="button" onclick="submitUpdateScore()">
+        전체 갱신
+      </button>
+    </form>
+
+    {% if last_exec %}
+      <span style="margin-left:1rem; color:#666; font-size:0.9rem;">
+        마지막 갱신: {{ last_exec }}
+      </span>
+    {% endif %}
+  </div>
+
+  <!-- 2) 자동배치, 순서수정, 역할수정/확인 버튼 -->
+  <div style="margin-bottom:0.5rem;">
+    <form id="auto-place-form"
+          action="{{ url_for('characters.auto_place') }}"
+          method="post"
+          style="display:inline; margin-right:0.5rem;">
+      <input type="hidden" name="user_idx"   value="{{ selected_user.idx  if selected_user }}">
+      <input type="hidden" name="adventure"  value="{{ selected_user.adventure if selected_user }}">
+      <button id="auto-btn" type="button" onclick="submitAutoPlace()">
+        자동배치
+      </button>
+    </form>
+
+    <button id="order-btn" type="button" onclick="toggleOrderMode()">
+      순서수정
+    </button>
+
+    <button id="edit-btn" type="button" onclick="toggleEdit()">
+      역할수정
+    </button>
+
+    <button id="save-btn" type="button" style="display:none;" onclick="submitFlags()">
+      확인
+    </button>
+  </div>
+
+  <!-- 3) 체크박스 & 순서 수정 폼 -->
+  <form id="flags-form"
+        action="{{ url_for('characters.update_flags') }}"
+        method="post">
+    <input type="hidden" name="user_idx"   value="{{ selected_user.idx  if selected_user }}">
+    <input type="hidden" name="adventure"  value="{{ selected_user.adventure if selected_user }}">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>이름</th>
+          <th>직업</th>
+          <th>명성</th>
+          <th>점수</th>
+          <th>변화량</th>
+          <th>흉몽</th>
+          <th>여신전</th>
+          <th>애쥬어</th>
+          <th>베누스</th>
+          <th>활성화</th>
+          <th class="order-col" style="display:none; text-align:center;">
+            순서
+          </th>
+        </tr>
+      </thead>
+      <tbody id="char-tbody">
+        {% for c in characters %}
+          {% set prev = c.last_score or 0 %}
+          {% set delta = c.score - prev %}
+        <tr data-idx="{{ c.idx }}">
+          <td>{{ loop.index }}</td>
+          <td>{{ c.chara_name }}</td>
+          <td>{{ c.job }}</td>
+          <td>{{ "{:,}".format(c.fame) }}</td>
+          <td>{{ "{:,}".format(c.score) }}</td>
+          <td>
+            {% if delta > 0 %}
+              <span style="color:red;">+{{ "{:,}".format(delta) }}</span>
+            {% elif delta < 0 %}
+              <span style="color:blue;">{{ "{:,}".format(delta) }}</span>
+            {% else %}
+              0
+            {% endif %}
+          </td>
+          <td><input type="checkbox" name="nightmare_{{c.idx}}" disabled {% if c.nightmare %}checked{% endif %}></td>
+          <td><input type="checkbox" name="temple_{{c.idx}}"    disabled {% if c.temple    %}checked{% endif %}></td>
+          <td><input type="checkbox" name="azure_{{c.idx}}"     disabled {% if c.azure     %}checked{% endif %}></td>
+          <td><input type="checkbox" name="venus_{{c.idx}}"     disabled {% if c.venus     %}checked{% endif %}></td>
+          <td><input type="checkbox" name="use_yn_{{c.idx}}"    disabled {% if c.use_yn    %}checked{% endif %}></td>
+          <td class="order-col" style="display:none;">
+            <button type="button" class="btn-up">↑</button>
+            <button type="button" class="btn-down">↓</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </form>
+
+  <!-- 4) JS 스크립트 & CSS -->
+  <script>
+    // 1) 전체 갱신
+    let isUpdating = false;
+    function submitUpdateScore() {
+      const form = document.getElementById('update-score-form');
+      const btn  = document.getElementById('update-btn');
+      if (!form.user_idx.value) { alert('유저를 선택해 주세요.'); return; }
+      if (isUpdating) return;
+      isUpdating = true;
+      btn.disabled    = true;
+      btn.textContent = '갱신 중…';
+      setTimeout(() => form.submit(), 50);
+    }
+
+    // 2) 자동배치
+    let isPlacing = false;
+    function submitAutoPlace() {
+      const form = document.getElementById('auto-place-form');
+      const btn  = document.getElementById('auto-btn');
+      if (!form.user_idx.value) { alert('유저를 선택해 주세요.'); return; }
+      if (isPlacing) return;
+      isPlacing = true;
+      btn.disabled    = true;
+      btn.textContent = '배치 중…';
+      setTimeout(() => form.submit(), 50);
+    }
+
+    // 3) 모드 플래그 및 UI 업데이트
+    let orderMode = false;
+    let editMode  = false;
+
+    const orderBtn = document.getElementById('order-btn');
+    const editBtn  = document.getElementById('edit-btn');
+    const saveBtn  = document.getElementById('save-btn');
+
+    function updateUI() {
+      // 순서 수정 버튼 텍스트 및 컬럼 표시
+      orderBtn.textContent = orderMode ? '수정완료' : '순서수정';
+      document.querySelectorAll('.order-col')
+              .forEach(el => el.style.display = orderMode ? '' : 'none');
+
+      // 역할 수정 / 확인 버튼 표시
+      editBtn.style.display = editMode ? 'none' : '';
+      saveBtn.style.display = editMode ? '' : 'none';
+
+      // 체크박스 활성화 제어
+      document.querySelectorAll('#flags-form input[type="checkbox"]')
+              .forEach(chk => chk.disabled = !editMode);
+    }
+
+    function toggleOrderMode() {
+      orderMode = !orderMode;
+      if (orderMode) editMode = false;
+      updateUI();
+
+      // 수정완료 클릭 시 페이지 리로드
+      if (!orderMode) {
+        setTimeout(() => {
+          const url = new URL(window.location.href);
+          // 서버에서 넘긴 flash/alert 파라미터가 'alert' 라고 가정
+          url.searchParams.delete('alert');
+          window.location.href = url.toString();
+        }, 200);
+      }
+    }
+
+    function toggleEdit() {
+      editMode = !editMode;
+      if (editMode) orderMode = false;
+      updateUI();
+    }
+
+    function submitFlags() {
+      if (!editMode) return;
+      document.getElementById('flags-form').submit();
+      editMode = false;
+      updateUI();
+    }
+
+    // 4) 순서 변경 화살표 클릭 처리 (AJAX)
+    document.getElementById('char-tbody').addEventListener('click', e => {
+      if (!orderMode) return;
+      const btn = e.target;
+      if (!btn.matches('.btn-up, .btn-down')) return;
+
+      const tr    = btn.closest('tr');
+      const other = btn.matches('.btn-up') ? tr.previousElementSibling : tr.nextElementSibling;
+      if (!other) return;
+
+      // DOM 순서 교환
+      if (btn.matches('.btn-up')) {
+        tr.parentNode.insertBefore(tr, other);
+      } else {
+        tr.parentNode.insertBefore(other, tr);
+      }
+
+      // 서버에 교환 요청
+      const a = +tr.dataset.idx, b = +other.dataset.idx;
+      fetch('{{ url_for("characters.swap_order") }}', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({a,b})
+      });
+    });
+  </script>
+
+  <style>
+    /* 버튼 간격 아주 조금만 */
+    #order-btn,
+    #edit-btn,
+    #save-btn {
+      margin-right: 4px;
+    }
+    #save-btn {
+      margin-right: 0;
+    }
+    /* 선택된 모드 강조용 (선택사항) */
+    .active {
+      background-color: #eef;
+      border-color: #99c;
+    }
+  </style>
+{% endblock %}

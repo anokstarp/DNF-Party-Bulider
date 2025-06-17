@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}파티 자동매칭{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header>
+    <h1>파티 자동매칭</h1>
+    <nav>
+      <a href="{{ url_for('users.list_users') }}">유저 관리</a> |
+      <a href="{{ url_for('characters.show_characters') }}">캐릭터 리스트</a> |
+      <a href="{{ url_for('party.list_and_generate') }}">파티 생성/리스트</a>
+    </nav>
+  </header>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

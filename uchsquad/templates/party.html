@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block content %}
+  <h2>파티 생성 및 리스트</h2>
+  <form action="{{ url_for('party.list_and_generate') }}" method="post">
+    <button type="submit">파티 생성</button>
+  </form>
+
+  {% if parties %}
+  <table>
+    <thead>
+      <tr>
+        <th>버퍼</th><th>딜러1</th><th>딜러2</th><th>딜러3</th><th>결과</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in parties %}
+      <tr>
+        {% for role in ['buffer','dealer1','dealer2','dealer3','result'] %}
+        <td>
+          <div>이름: {{ p[role].chara_name }}</div>
+          <div>직업: {{ p[role].job }}</div>
+          <div>명성: {{ p[role].fame }}</div>
+          <div>점수: {{ p[role].score }}</div>
+        </td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p>아직 생성된 파티가 없습니다.</p>
+  {% endif %}
+{% endblock %}
