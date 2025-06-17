@@ -1,8 +1,16 @@
 {% extends 'base.html' %}
 {% block content %}
-  {% if alert %}
-    <script>alert("{{ alert }}");</script>
-  {% endif %}
+	{% if alert %}
+	  <script>
+		// 1) alert 띄우기
+		window.alert({{ alert|tojson }});
+
+		// 2) URL에서 alert 파라미터 제거
+		const url = new URL(window.location);
+		url.searchParams.delete('alert');
+		window.history.replaceState({}, '', url);
+	  </script>
+	{% endif %}
 
   <h2>캐릭터 리스트</h2>
 

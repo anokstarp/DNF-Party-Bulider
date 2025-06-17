@@ -1,33 +1,47 @@
-{% extends 'base.html' %}
-{% block content %}
-  <h2>파티 생성 및 리스트</h2>
-  <form action="{{ url_for('party.list_and_generate') }}" method="post">
-    <button type="submit">파티 생성</button>
-  </form>
+import json
+from flask import Blueprint, render_template, request, redirect, url_for
+from scripts.party_generator import run_party_generation
+from app import get_db_connection
 
-  {% if parties %}
-  <table>
-    <thead>
-      <tr>
-        <th>버퍼</th><th>딜러1</th><th>딜러2</th><th>딜러3</th><th>결과</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for p in parties %}
-      <tr>
-        {% for role in ['buffer','dealer1','dealer2','dealer3','result'] %}
-        <td>
-          <div>이름: {{ p[role].chara_name }}</div>
-          <div>직업: {{ p[role].job }}</div>
-          <div>명성: {{ p[role].fame }}</div>
-          <div>점수: {{ p[role].score }}</div>
-        </td>
-        {% endfor %}
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-    <p>아직 생성된 파티가 없습니다.</p>
-  {% endif %}
-{% endblock %}
+party_bp = Blueprint('party', __name__)
+
+@party_bp.route('/', methods=['GET', 'POST'])
+def list_and_generate():
+    # 1) 선택된 파티 타입 (기본 'temple')
+    selected = request.values.get('type', 'temple')
+
+    # 2) POST → 선택된 타입 파티 재생성
+    if request.method == 'POST':
+        run_party_generation(selected)
+        return redirect(url_for('party.list_and_generate', type=selected))
+
+    # 3) GET → 단일 'party' 테이블에서 해당 타입만 오름차순 조회
+    conn = get_db_connection()
+    rows = conn.execute(
+        'SELECT id, type, buffer, dealer1, dealer2, dealer3 '
+        'FROM party '
+        'WHERE type = ? '
+        'ORDER BY id ASC',
+        (selected,)
+    ).fetchall()
+    conn.close()
+
+    parties = []
+    for row in rows:
+        raw = dict(row)
+        parties.append({
+            'id':     raw['id'],
+            'type':   raw['type'],
+            'buffer': json.loads(raw['buffer']) if raw['buffer'] else None,
+            'dealers': [
+                json.loads(raw['dealer1']) if raw['dealer1'] else None,
+                json.loads(raw['dealer2']) if raw['dealer2'] else None,
+                json.loads(raw['dealer3']) if raw['dealer3'] else None,
+            ]
+        })
+
+    return render_template(
+        'party.html',
+        selected=selected,
+        parties=parties
+    )

@@ -51,11 +51,12 @@ select {
 
 button {
   padding: 0.4rem 0.8rem;
-  font-size: 0.9rem;
+  font-size: 1rem;
+  line-height: 1.2;
   cursor: pointer;
+  margin-right: 0.25rem; /* 버튼 간격 */
 }
 
-/* 버튼 비활성화 시 스타일 */
 button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
@@ -63,17 +64,17 @@ button:disabled {
 
 /* — 테이블 스타일 — */
 .table, table {
-  width: auto;              /* 내용에 딱 맞춘 너비 */
+  width: auto;
   border-collapse: collapse;
-  font-size: 0.9rem;        /* 90% 폰트 크기 */
+  font-size: 0.9rem;
   margin-top: 1rem;
 }
 
 th, td {
   border: 1px solid #ddd;
-  padding: 0.4rem 0.8rem;    /* 세로 4px, 가로 8px */
+  padding: 0.4rem 0.8rem;
   text-align: left;
-  white-space: nowrap;      /* 줄 바꿈 방지 */
+  white-space: nowrap;
 }
 
 thead th {
@@ -85,41 +86,109 @@ tbody tr:nth-child(odd) {
   background-color: #fafafa;
 }
 
-/* 중첩 테이블 (만약의 경우) */
+/* 중첩 테이블 */
 .nested-table td {
   border: none;
   padding: 0.2rem;
 }
 
-/* 일반 문단 스타일 */
+/* 문단 스타일 */
 p {
   margin-top: 1rem;
   font-size: 0.9rem;
 }
 
-/* 체크박스를 cell 가운데 정렬 */
+/* 체크박스 중앙 정렬 */
 table td input[type="checkbox"] {
   display: block;
   margin: 0 auto;
 }
 
-/*— 일반 버튼: 중간 크기 —*/
-button {
-  padding: 0.4rem 0.8rem;   /* 위아래 0.4, 좌우 0.8 */
-  font-size: 1rem;         /* 1rem 정도 */
-  line-height: 1.2;        /* 눌렀을 때 글자 눌리지 않도록 */
-}
-
-
-/* 버튼을 가로로 늘리고 동일한 크기로 */
+/* 화살표 버튼 (순서 수정) */
 .order-col .btn-up,
 .order-col .btn-down {
   display: inline-block;
-  flex: 1;                 /* 컨테이너 너비를 동일 분할 */
-  width: 100%;    
-  box-sizing: border-box;  
-  padding: 0.2rem 0;       /* 위아래만 약간 여백 */
-  font-size: 0.8rem;       
-  text-align: center;      
-  line-height: 1;          
+  flex: 1;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.2rem 0;
+  font-size: 0.8rem;
+  text-align: center;
+  line-height: 1;
+}
+
+/* — 반응형: 해상도별 미디어 쿼리 — */
+
+/* 대형 데스크톱 (1920px 이상) */
+@media (min-width: 1920px) {
+  body {
+    max-width: 1600px;
+    padding: 2rem;
+  }
+  button {
+    padding: 0.6rem 1rem;
+    font-size: 1.125rem;
+    margin-right: 0.5rem;
+  }
+  select {
+    padding: 0.6rem;
+    font-size: 1.125rem;
+  }
+  table {
+    font-size: 1rem;
+  }
+}
+
+/* 일반 데스크톱·태블릿 (1024px ~ 1919px) */
+@media (min-width: 1024px) and (max-width: 1919px) {
+  body {
+    max-width: 1000px;
+    padding: 1rem;
+  }
+  button {
+    padding: 0.5rem 0.9rem;
+    font-size: 1rem;
+    margin-right: 0.4rem;
+  }
+  select {
+    padding: 0.5rem;
+    font-size: 1rem;
+  }
+  table {
+    font-size: 0.95rem;
+  }
+}
+
+/* 모바일 (768px 이하) */
+@media (max-width: 768px) {
+  body {
+    padding: 0.5rem;
+  }
+  button {
+    display: block;
+    width: 100%;
+    margin: 0.5rem 0;
+    font-size: 1rem;
+    padding: 0.75rem;
+    margin-right: 0;
+  }
+  select {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+  table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    font-size: 0.9rem;
+  }
+  .order-col {
+    /* JS로 토글 시 display 처리 */
+  }
+}
+
+/* 체크박스 크기 키우기 (transform 방식) */
+input[type="checkbox"] {
+  transform: scale(1.5);       /* 1.5배 크게 */
+  margin: 0.25rem;             /* 주변 여백 조금 확보 */
 }
