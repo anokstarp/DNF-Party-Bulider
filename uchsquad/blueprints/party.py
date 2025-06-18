@@ -1,53 +1,86 @@
 import os
+import sys
+import subprocess
 import json
-from flask import Blueprint, render_template, request, redirect, url_for
-from scripts.party_generator import run_party_generation
+from flask import Blueprint, render_template, request, redirect, url_for, flash
 from app import get_db_connection
 
-# __file__ 기준으로 project_root/templates 폴더를 가리키도록 절대 경로 설정
-TEMPLATES_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'templates'))
+party_bp = Blueprint('party', __name__, url_prefix='/party')
 
-party_bp = Blueprint(
-    'party',
-    __name__,
-    template_folder=TEMPLATES_DIR
-)
+def run_party_generation(role):
+    base_dir    = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    script_path = os.path.join(base_dir, 'scripts', 'party_maker_print.py')
+    return subprocess.run(
+        [sys.executable, script_path, role],
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True
+    )
 
 @party_bp.route('/', methods=['GET', 'POST'])
 def list_and_generate():
-    # 1) 선택된 파티 타입 (기본 'temple')
-    selected = request.values.get('type', 'temple')
+    role = request.values.get('role', 'temple')
 
-    # 2) POST → 선택된 타입 파티 재생성
     if request.method == 'POST':
-        run_party_generation(selected)
-        return redirect(url_for('party.list_and_generate', type=selected))
+        try:
+            # 1) 파티 생성 스크립트 실행
+            res = run_party_generation(role)
 
-    # 3) GET → 단일 'party' 테이블에서 해당 타입만 오름차순 조회
+            # 2) 생성 후 DB에서 버퍼·딜러·파티 개수 조회
+            conn = get_db_connection()
+            buf_cnt = conn.execute(
+                f"SELECT COUNT(*) FROM user_character "
+                f"WHERE use_yn=1 AND isbuffer=1 AND {role}=1"
+            ).fetchone()[0]
+            del_cnt = conn.execute(
+                "SELECT COUNT(*) FROM user_character "
+                "WHERE use_yn=1 AND isbuffer=0"
+            ).fetchone()[0]
+            party_cnt = conn.execute(
+                "SELECT COUNT(*) FROM party WHERE type = ?",
+                (role,)
+            ).fetchone()[0]
+            conn.close()
+
+            flash(
+                f"버퍼 {buf_cnt}명, 딜러 {del_cnt}명 (총 {buf_cnt + del_cnt}명) → "
+                f"{party_cnt}개 파티 생성 완료",
+                "success"
+            )
+        except subprocess.CalledProcessError as e:
+            err = e.stderr.strip() if e.stderr else str(e)
+            flash(f"파티 재생성 중 오류 발생:\n{err}", "error")
+
+        return redirect(url_for('party.list_and_generate', role=role))
+
+    # GET 요청: party / abandonment 로드
     conn = get_db_connection()
     rows = conn.execute(
-        'SELECT id, type, buffer, dealer1, dealer2, dealer3 '
-        'FROM party '
-        'WHERE type = ? '
-        'ORDER BY id ASC',
-        (selected,)
+        "SELECT buffer, dealer1, dealer2, dealer3, result "
+        "FROM party WHERE type = ? ORDER BY id ASC",
+        (role,)
     ).fetchall()
+    parties = [{
+        'buffer': json.loads(r['buffer']),
+        'dealers': [
+            json.loads(r['dealer1']) if r['dealer1'] else None,
+            json.loads(r['dealer2']) if r['dealer2'] else None,
+            json.loads(r['dealer3']) if r['dealer3'] else None,
+        ],
+        'result': r['result']
+    } for r in rows]
+
+    ab_rows = conn.execute(
+        "SELECT character FROM abandonment WHERE type = ? ORDER BY id ASC",
+        (role,)
+    ).fetchall()
+    abandoned = [json.loads(r['character']) for r in ab_rows]
     conn.close()
 
-    parties = []
-    for row in rows:
-        raw = dict(row)
-        parties.append({
-            'id':     raw['id'],
-            'type':   raw['type'],
-            'buffer': json.loads(raw['buffer']) if raw['buffer'] else None,
-            'dealers': [
-                json.loads(raw['dealer1']) if raw['dealer1'] else None,
-                json.loads(raw['dealer2']) if raw['dealer2'] else None,
-                json.loads(raw['dealer3']) if raw['dealer3'] else None,
-            ]
-        })
-
-    return render_template('party.html',
-                           selected=selected,
-                           parties=parties)
+    return render_template(
+        'party.html',
+        selected=role,
+        parties=parties,
+        abandoned=abandoned
+    )

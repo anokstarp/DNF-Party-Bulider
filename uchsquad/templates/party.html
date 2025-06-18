@@ -1,47 +1,165 @@
-import json
-from flask import Blueprint, render_template, request, redirect, url_for
-from scripts.party_generator import run_party_generation
-from app import get_db_connection
+{% extends 'base.html' %}
+{% block content %}
+  <h2>파티 생성/리스트</h2>
 
-party_bp = Blueprint('party', __name__)
+  {# 플래시 메시지 #}
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div>
+        {% for category, msg in messages %}
+          <div class="flash {{ category }}">{{ msg|replace('\n','<br>')|safe }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
 
-@party_bp.route('/', methods=['GET', 'POST'])
-def list_and_generate():
-    # 1) 선택된 파티 타입 (기본 'temple')
-    selected = request.values.get('type', 'temple')
+  <style>
+    .flash { padding: 0.5rem; margin-bottom: 1rem; border-radius: 4px; }
+    .flash.success { background: #e0f7e9; color: #256029; }
+    .flash.error   { background: #fdecea; color: #841c26; white-space: pre-wrap; }
 
-    # 2) POST → 선택된 타입 파티 재생성
-    if request.method == 'POST':
-        run_party_generation(selected)
-        return redirect(url_for('party.list_and_generate', type=selected))
+    .party-wrapper {
+      display: flex;
+      align-items: flex-start;
+      gap: 2rem; /* 간격 확대 */
+    }
+    .party-list {
+      flex: 0 0 auto;
+    }
+    .party-list table {
+      width: 65ch;
+      table-layout: fixed;
+      margin-bottom: 1rem;
+    }
+    .abandon-list {
+      flex: 0 0 30ch;
+      margin-left: 2rem; /* 테이블과 여유 공간 추가 */
+      position: sticky;
+      top: 1rem;
+      max-height: calc(100vh - 6rem);
+      overflow-y: auto;
+      padding: 0.5rem;
+      border: 1px solid #ddd;
+      background: #fafafa;
+    }
+    .abandon-list h3 {
+      margin-top: 0;
+      font-size: 1.1rem;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 0.25rem;
+    }
+    .abandon-list ul {
+      list-style: none;
+      padding: 0;
+      margin: 0.5rem 0;
+    }
+    .abandon-list li {
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+    }
+  </style>
 
-    # 3) GET → 단일 'party' 테이블에서 해당 타입만 오름차순 조회
-    conn = get_db_connection()
-    rows = conn.execute(
-        'SELECT id, type, buffer, dealer1, dealer2, dealer3 '
-        'FROM party '
-        'WHERE type = ? '
-        'ORDER BY id ASC',
-        (selected,)
-    ).fetchall()
-    conn.close()
+  <div style="margin-bottom:1rem;">
+    <form method="get" action="" style="display:inline;">
+      <label for="role-select">유형 선택:</label>
+      <select id="role-select" name="role" onchange="this.form.submit()">
+        <option value="temple" {% if selected=='temple' %}selected{% endif %}>Temple</option>
+        <option value="azure"  {% if selected=='azure'  %}selected{% endif %}>Azure</option>
+        <option value="venus"  {% if selected=='venus'  %}selected{% endif %}>Venus</option>
+      </select>
+    </form>
+    <form method="post" action="" style="display:inline; margin-left:0.5rem;">
+      <input type="hidden" name="role" value="{{ selected }}">
+      <button type="submit">파티 재생성</button>
+    </form>
+  </div>
 
-    parties = []
-    for row in rows:
-        raw = dict(row)
-        parties.append({
-            'id':     raw['id'],
-            'type':   raw['type'],
-            'buffer': json.loads(raw['buffer']) if raw['buffer'] else None,
-            'dealers': [
-                json.loads(raw['dealer1']) if raw['dealer1'] else None,
-                json.loads(raw['dealer2']) if raw['dealer2'] else None,
-                json.loads(raw['dealer3']) if raw['dealer3'] else None,
-            ]
-        })
+  {% if parties %}
+    <div class="party-wrapper">
+      <div class="party-list">
+        {% for p in parties %}
+          <table class="table-auto border">
+            <colgroup>
+              <col style="width: 7ch;">
+              <col style="width: 15ch;">
+              <col style="width: 28ch;">
+              <col style="width: 15ch;">
+            </colgroup>
+            <thead class="bg-gray-100">
+              <tr>
+                <th>파티{{ loop.index }}</th>
+                <th>모험단</th>
+                <th>이름(직업)</th>
+                <th>스코어</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-b">
+                <td class="px-2 py-1">버퍼1</td>
+                <td class="px-2 py-1 overflow-hidden text-ellipsis whitespace-nowrap">
+                  {{ p.buffer.adventure }}
+                </td>
+                <td class="px-2 py-1 overflow-hidden text-ellipsis whitespace-nowrap">
+                  {{ p.buffer.chara_name }} ({{ p.buffer.job }})
+                </td>
+                <td class="px-2 py-1 text-right">
+                  {{ "{:,}".format(p.buffer.score) }}
+                </td>
+              </tr>
+              {% for i in range(3) %}
+                {% set d = p.dealers[i] %}
+                <tr class="border-b">
+                  <td class="px-2 py-1">딜러{{ i+1 }}</td>
+                  {% if d %}
+                    <td class="px-2 py-1 overflow-hidden text-ellipsis whitespace-nowrap">
+                      {{ d.adventure }}
+                    </td>
+                    <td class="px-2 py-1 overflow-hidden text-ellipsis whitespace-nowrap">
+                      {{ d.chara_name }} ({{ d.job }})
+                    </td>
+                    <td class="px-2 py-1 text-right">
+                      {{ "{:,}".format(d.score) }}
+                    </td>
+                  {% else %}
+                    <td class="px-2 py-1 text-center" colspan="2">—</td>
+                    <td class="px-2 py-1">—</td>
+                  {% endif %}
+                </tr>
+              {% endfor %}
+              <tr class="bg-gray-100">
+                <td colspan="3" class="px-2 py-1 font-semibold text-right">
+                  합산 점수
+                </td>
+                <td class="px-2 py-1 text-right font-semibold">
+                  {{ "{:.2f}".format(p.result) if p.result is not none else '—' }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        {% endfor %}
+      </div>
 
-    return render_template(
-        'party.html',
-        selected=selected,
-        parties=parties
-    )
+      <div class="abandon-list">
+        <h3>남은 캐릭터</h3>
+        {% if abandoned %}
+          <ul>
+            {% for c in abandoned %}
+              <li>
+                [{{ '버퍼' if c.isbuffer else '딜러' }}]
+                {{ c.adventure }} — {{ c.chara_name }},
+                score: {{ "{:,}".format(c.score) }}
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p>남은 캐릭터가 없습니다.</p>
+        {% endif %}
+      </div>
+    </div>
+  {% else %}
+    <div class="text-center text-gray-600 mt-8">
+      해당 유형의 파티가 없습니다.<br>
+      위에서 <strong>파티 재생성</strong> 버튼을 눌러주세요.
+    </div>
+  {% endif %}
+{% endblock %}
