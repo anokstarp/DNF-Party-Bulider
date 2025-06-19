@@ -35,7 +35,7 @@ def list_and_generate():
             ).fetchone()[0]
             del_cnt = conn.execute(
                 "SELECT COUNT(*) FROM user_character "
-                "WHERE use_yn=1 AND isbuffer=0"
+                f"WHERE use_yn=1 AND isbuffer=0 AND {role}=1"
             ).fetchone()[0]
             party_cnt = conn.execute(
                 "SELECT COUNT(*) FROM party WHERE type = ?",
