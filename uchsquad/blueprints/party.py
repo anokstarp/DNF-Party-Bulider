@@ -22,19 +22,17 @@ def run_party_generation(role):
 def list_and_generate():
     role = request.values.get('role', 'temple')
 
-    if request.method == 'POST':
+    if request.method == 'POST' and not request.form.get('complete_action'):
+        # POST가 “재생성” 용도일 때만 파티 생성 스크립트 실행
         try:
-            # 1) 파티 생성 스크립트 실행
-            res = run_party_generation(role)
-
-            # 2) 생성 후 DB에서 버퍼·딜러·파티 개수 조회
+            run_party_generation(role)
             conn = get_db_connection()
             buf_cnt = conn.execute(
                 f"SELECT COUNT(*) FROM user_character "
                 f"WHERE use_yn=1 AND isbuffer=1 AND {role}=1"
             ).fetchone()[0]
             del_cnt = conn.execute(
-                "SELECT COUNT(*) FROM user_character "
+                f"SELECT COUNT(*) FROM user_character "
                 f"WHERE use_yn=1 AND isbuffer=0 AND {role}=1"
             ).fetchone()[0]
             party_cnt = conn.execute(
@@ -54,22 +52,36 @@ def list_and_generate():
 
         return redirect(url_for('party.list_and_generate', role=role))
 
-    # GET 요청: party / abandonment 로드
+    # GET 요청 또는 완료/복원 액션 이후
     conn = get_db_connection()
     rows = conn.execute(
-        "SELECT buffer, dealer1, dealer2, dealer3, result "
+        "SELECT id, buffer, dealer1, dealer2, dealer3, result, "
+        "       COALESCE(is_completed, 0) AS is_completed "
         "FROM party WHERE type = ? ORDER BY id ASC",
         (role,)
     ).fetchall()
-    parties = [{
-        'buffer': json.loads(r['buffer']),
-        'dealers': [
-            json.loads(r['dealer1']) if r['dealer1'] else None,
-            json.loads(r['dealer2']) if r['dealer2'] else None,
-            json.loads(r['dealer3']) if r['dealer3'] else None,
-        ],
-        'result': r['result']
-    } for r in rows]
+
+    parties = []
+    for r in rows:
+        # SQLite TEXT 컬럼에서 '0'/'1'로 왔다면 int() 로 변환한 뒤 bool로
+        completed_flag = False
+        try:
+            completed_flag = bool(int(r['is_completed']))
+        except Exception:
+            # 만약 이미 0/1 정수형으로 왔으면 그냥 bool으로
+            completed_flag = bool(r['is_completed'])
+
+        parties.append({
+            'id': r['id'],
+            'buffer': json.loads(r['buffer']),
+            'dealers': [
+                json.loads(r['dealer1']) if r['dealer1'] else None,
+                json.loads(r['dealer2']) if r['dealer2'] else None,
+                json.loads(r['dealer3']) if r['dealer3'] else None,
+            ],
+            'result': r['result'],
+            'is_completed': completed_flag,
+        })
 
     ab_rows = conn.execute(
         "SELECT character FROM abandonment WHERE type = ? ORDER BY id ASC",
@@ -84,3 +96,43 @@ def list_and_generate():
         parties=parties,
         abandoned=abandoned
     )
+
+@party_bp.route('/complete', methods=['POST'])
+def complete_party():
+    """파티를 완료 상태로 표시합니다."""
+    party_id = request.form.get('party_id')
+    role     = request.form.get('role', 'temple')
+
+    if not party_id:
+        flash('유효하지 않은 파티입니다.', 'error')
+    else:
+        conn = get_db_connection()
+        conn.execute(
+            'UPDATE party SET is_completed = 1 WHERE id = ?',
+            (party_id,)
+        )
+        conn.commit()
+        conn.close()
+        flash(f'파티 {party_id}를 클리어 처리했습니다.', 'success')
+
+    return redirect(url_for('party.list_and_generate', role=role))
+
+@party_bp.route('/uncomplete', methods=['POST'])
+def uncomplete_party():
+    """완료된 파티를 미완료 상태로 되돌립니다."""
+    party_id = request.form.get('party_id')
+    role     = request.form.get('role', 'temple')
+
+    if not party_id:
+        flash('유효하지 않은 파티입니다.', 'error')
+    else:
+        conn = get_db_connection()
+        conn.execute(
+            'UPDATE party SET is_completed = 0 WHERE id = ?',
+            (party_id,)
+        )
+        conn.commit()
+        conn.close()
+        flash(f'파티 {party_id}를 미완료 상태로 되돌렸습니다.', 'success')
+
+    return redirect(url_for('party.list_and_generate', role=role))

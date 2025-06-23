@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+
 {% block content %}
   <h2>파티 생성/리스트</h2>
 
@@ -7,22 +8,27 @@
     {% if messages %}
       <div>
         {% for category, msg in messages %}
-          <div class="flash {{ category }}">{{ msg|replace('\n','<br>')|safe }}</div>
+          <div class="flash {{ category }}">
+            {{ msg|replace('\n','<br>')|safe }}
+          </div>
         {% endfor %}
       </div>
     {% endif %}
   {% endwith %}
 
   <style>
-    .flash { padding: 0.5rem; margin-bottom: 1rem; border-radius: 4px; }
-    .flash.success { background: #e0f7e9; color: #256029; }
-    .flash.error   { background: #fdecea; color: #841c26; white-space: pre-wrap; }
+    /* 완료된 파티 회색 처리 */
+    .completed {
+      filter: grayscale(100%);
+      opacity: 0.6;
+    }
 
     .party-wrapper {
       display: flex;
       align-items: flex-start;
-      gap: 2rem; /* 간격 확대 */
+      gap: 2rem;
     }
+
     .party-list {
       flex: 0 0 auto;
     }
@@ -31,9 +37,11 @@
       table-layout: fixed;
       margin-bottom: 1rem;
     }
+
+    /* 오른쪽 네비: 필터 + 남은 캐릭터 */
     .abandon-list {
       flex: 0 0 30ch;
-      margin-left: 2rem; /* 테이블과 여유 공간 추가 */
+      margin-left: auto;
       position: sticky;
       top: 1rem;
       max-height: calc(100vh - 6rem);
@@ -42,20 +50,20 @@
       border: 1px solid #ddd;
       background: #fafafa;
     }
-    .abandon-list h3 {
-      margin-top: 0;
-      font-size: 1.1rem;
-      border-bottom: 1px solid #ccc;
-      padding-bottom: 0.25rem;
-    }
-    .abandon-list ul {
-      list-style: none;
-      padding: 0;
-      margin: 0.5rem 0;
-    }
-    .abandon-list li {
-      margin-bottom: 0.5rem;
-      font-size: 0.9rem;
+    .abandon-list h3 { margin: 0.5rem 0 0.25rem; font-size:1.1rem; border-bottom:1px solid #ccc; padding-bottom:0.25rem; }
+    .abandon-list .filter-options { list-style:none; padding:0; margin:0.5rem 0 1rem; }
+    .abandon-list .filter-options li { margin-bottom:0.25rem; font-size:0.9rem; }
+    .abandon-list .filter-options label { display:flex; align-items:center; }
+    .abandon-list .filter-options input { margin-right:0.25rem; }
+    .abandon-list .mode-toggle { margin-bottom:1rem; font-size:0.9rem; }
+    .abandon-list ul.characters { list-style:none; padding:0; margin:0.5rem 0; }
+    .abandon-list ul.characters li {
+      margin-bottom:0.5rem;
+      padding:0.5rem;
+      border:1px solid #ccc;
+      border-radius:4px;
+      background:#fff;
+      font-size:0.9rem;
     }
   </style>
 
@@ -76,78 +84,106 @@
 
   {% if parties %}
     <div class="party-wrapper">
+      <!-- 왼쪽: 파티 목록 -->
+	    {% set prefixes = {
+		  'temple': '여',
+		  'azure' : '애',
+		  'venus' : '베'
+		} %}
+	  
       <div class="party-list">
         {% for p in parties %}
-          <table class="table-auto border">
+          <table class="border table-auto {% if p.is_completed %}completed{% endif %}">
             <colgroup>
-              <col style="width: 7ch;">
-              <col style="width: 15ch;">
-              <col style="width: 28ch;">
-              <col style="width: 15ch;">
+              <col style="width:7ch">
+              <col style="width:15ch">
+              <col style="width:28ch">
+              <col style="width:15ch">
+              <col style="width:10ch">    <!-- 액션 열 -->
             </colgroup>
             <thead class="bg-gray-100">
               <tr>
-                <th>파티{{ loop.index }}</th>
+                <th>{{ prefixes[selected] }}{{ loop.index }}</th>
                 <th>모험단</th>
                 <th>이름(직업)</th>
                 <th>스코어</th>
+                <th>액션</th>
               </tr>
             </thead>
             <tbody>
+              {# 버퍼 1 #}
               <tr class="border-b">
-                <td class="px-2 py-1">버퍼1</td>
-                <td class="px-2 py-1 overflow-hidden text-ellipsis whitespace-nowrap">
-                  {{ p.buffer.adventure }}
-                </td>
-                <td class="px-2 py-1 overflow-hidden text-ellipsis whitespace-nowrap">
-                  {{ p.buffer.chara_name }} ({{ p.buffer.job }})
-                </td>
-                <td class="px-2 py-1 text-right">
-                  {{ "{:,}".format(p.buffer.score) }}
-                </td>
+                <td>버퍼1</td>
+                <td>{{ p.buffer.adventure }}</td>
+                <td>{{ p.buffer.chara_name }} ({{ p.buffer.job }})</td>
+                <td class="text-right">{{ "{:,}".format(p.buffer.score) }}</td>
+                <td></td>
               </tr>
+              {# 딜러 3명 #}
               {% for i in range(3) %}
                 {% set d = p.dealers[i] %}
                 <tr class="border-b">
-                  <td class="px-2 py-1">딜러{{ i+1 }}</td>
+                  <td>딜러{{ i+1 }}</td>
                   {% if d %}
-                    <td class="px-2 py-1 overflow-hidden text-ellipsis whitespace-nowrap">
-                      {{ d.adventure }}
-                    </td>
-                    <td class="px-2 py-1 overflow-hidden text-ellipsis whitespace-nowrap">
-                      {{ d.chara_name }} ({{ d.job }})
-                    </td>
-                    <td class="px-2 py-1 text-right">
-                      {{ "{:,}".format(d.score) }}
-                    </td>
+                    <td>{{ d.adventure }}</td>
+                    <td>{{ d.chara_name }} ({{ d.job }})</td>
+                    <td class="text-right">{{ "{:,}".format(d.score) }}</td>
+                    <td></td>
                   {% else %}
-                    <td class="px-2 py-1 text-center" colspan="2">—</td>
-                    <td class="px-2 py-1">—</td>
+                    <td colspan="2" class="text-center">—</td>
+                    <td>—</td>
+                    <td></td>
                   {% endif %}
                 </tr>
               {% endfor %}
-              <tr class="bg-gray-100">
-                <td colspan="3" class="px-2 py-1 font-semibold text-right">
-                  합산 점수
-                </td>
-                <td class="px-2 py-1 text-right font-semibold">
-                  {{ "{:.2f}".format(p.result) if p.result is not none else '—' }}
-                </td>
-              </tr>
+              {# 합산 점수 + 완료 버튼 #}
+				<tr class="bg-gray-100">
+				  <td colspan="3" class="text-right font-semibold">합산 점수</td>
+				  <td class="text-right font-semibold">
+					{{ "{:.2f}".format(p.result) if p.result is not none else '—' }}
+				  </td>
+				  <td>
+					{% if not p.is_completed %}
+					  <form method="post"
+							action="{{ url_for('party.complete_party') }}"
+							onsubmit="return confirm('이 파티를 던전 클리어 처리하시겠습니까?');">
+						<input type="hidden" name="party_id" value="{{ p.id }}">
+						<input type="hidden" name="role"     value="{{ selected }}">
+						<button type="submit">완료</button>
+					  </form>
+					{% else %}
+					  <form method="post"
+							action="{{ url_for('party.uncomplete_party') }}"
+							onsubmit="return confirm('이 파티를 미완료 상태로 되돌리시겠습니까?');">
+						<input type="hidden" name="party_id" value="{{ p.id }}">
+						<input type="hidden" name="role"     value="{{ selected }}">
+						<button type="submit">복원</button>
+					  </form>
+					{% endif %}
+				  </td>
+				</tr>
             </tbody>
           </table>
         {% endfor %}
       </div>
 
+      <!-- 오른쪽: 필터 + 남은 캐릭터 -->
       <div class="abandon-list">
+        <h3>모험단 필터</h3>
+        <ul id="filter-options" class="filter-options">
+          <!-- JS에서 체크박스 삽입 -->
+        </ul>
+        <div class="mode-toggle">
+          <label><input type="checkbox" id="filter-mode"> 하나라도 일치 (OR 모드)</label>
+        </div>
+
         <h3>남은 캐릭터</h3>
         {% if abandoned %}
-          <ul>
+          <ul class="characters">
             {% for c in abandoned %}
               <li>
                 [{{ '버퍼' if c.isbuffer else '딜러' }}]
-                {{ c.adventure }} — {{ c.chara_name }},
-                score: {{ "{:,}".format(c.score) }}
+                {{ c.adventure }} — {{ c.chara_name }}, score: {{ "{:,}".format(c.score) }}
               </li>
             {% endfor %}
           </ul>
@@ -162,4 +198,91 @@
       위에서 <strong>파티 재생성</strong> 버튼을 눌러주세요.
     </div>
   {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', ()=> {
+  const STORAGE_KEY = 'partyFilterState';
+  const tbodyRows = document.querySelectorAll('.party-list table tbody tr');
+  const optsContainer = document.getElementById('filter-options');
+  const modeToggle = document.getElementById('filter-mode');
+
+  // 1) 좌측 테이블에서 고유 모험단 수집 (합산 점수 제외)
+  const advSet = new Set();
+  tbodyRows.forEach(tr => {
+    const first = tr.children[0].textContent.trim();
+    if (first === '합산 점수') return;
+    const adv = tr.children[1].textContent.trim();
+    if (adv && adv !== '—') advSet.add(adv);
+  });
+
+  // 2) 체크박스 생성
+  Array.from(advSet).sort().forEach(adv => {
+    const li = document.createElement('li');
+    const lbl = document.createElement('label');
+    const chk = document.createElement('input');
+    chk.type = 'checkbox';
+    chk.className = 'filter-checkbox';
+    chk.value = adv;
+    lbl.append(chk, document.createTextNode(adv));
+    li.appendChild(lbl);
+    optsContainer.appendChild(li);
+    chk.addEventListener('change', onFilterChange);
+  });
+
+  modeToggle.addEventListener('change', onFilterChange);
+
+  // 3) data-adventures 세팅
+  document.querySelectorAll('.party-list table').forEach(table => {
+    const advs = Array.from(table.querySelectorAll('tbody tr'))
+      .filter(tr => tr.children[0].textContent.trim() !== '합산 점수')
+      .map(tr => tr.children[1].textContent.trim());
+    table.dataset.adventures = advs.join(',');
+  });
+
+  // 4) 로컬스토리지에서 이전 상태 불러오기
+  const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+  if (saved.checked && Array.isArray(saved.checked)) {
+    document.querySelectorAll('.filter-checkbox').forEach(chk => {
+      chk.checked = saved.checked.includes(chk.value);
+    });
+  }
+  if (typeof saved.orMode === 'boolean') {
+    modeToggle.checked = saved.orMode;
+  }
+
+  // 5) 초기 필터 적용
+  applyFilter();
+
+  // ——— 이벤트 핸들러 ———
+  function onFilterChange() {
+    // 저장
+    const checked = Array.from(
+      document.querySelectorAll('.filter-checkbox:checked')
+    ).map(i => i.value);
+    const orMode = modeToggle.checked;
+    localStorage.setItem(STORAGE_KEY,
+      JSON.stringify({ checked, orMode })
+    );
+    // 적용
+    applyFilter();
+  }
+
+  function applyFilter(){
+    const checked = Array.from(
+      document.querySelectorAll('.filter-checkbox:checked')
+    ).map(i=>i.value);
+    const orMode = modeToggle.checked;
+    document.querySelectorAll('.party-list table').forEach(tbl => {
+      const advs = tbl.dataset.adventures.split(',');
+      const show = !checked.length ||
+                    (orMode
+                      ? checked.some(v=>advs.includes(v))
+                      : checked.every(v=>advs.includes(v)));
+      tbl.style.display = show ? '' : 'none';
+    });
+  }
+});
+</script>
 {% endblock %}
