@@ -93,13 +93,13 @@
 	  
       <div class="party-list">
         {% for p in parties %}
-          <table class="border table-auto {% if p.is_completed %}completed{% endif %}">
+          <table class="border table-auto {% if p.is_completed %}completed{% endif %}" data-id="{{ p.id }}">
             <colgroup>
               <col style="width:7ch">
               <col style="width:15ch">
               <col style="width:28ch">
               <col style="width:15ch">
-              <col style="width:10ch">    <!-- 액션 열 -->
+              <col style="width:8ch">    <!-- 액션 열 -->
             </colgroup>
             <thead class="bg-gray-100">
               <tr>
@@ -117,7 +117,10 @@
                 <td>{{ p.buffer.adventure }}</td>
                 <td>{{ p.buffer.chara_name }} ({{ p.buffer.job }})</td>
                 <td class="text-right">{{ "{:,}".format(p.buffer.score) }}</td>
-                <td></td>
+				<td class="swap-col">
+				  <button class="swap-out-btn" data-role="buffer" data-index="0">OUT</button>
+				  <button class="swap-in-btn"  data-role="buffer" data-index="0" style="display:none;">IN</button>
+				</td>
               </tr>
               {# 딜러 3명 #}
               {% for i in range(3) %}
@@ -128,7 +131,10 @@
                     <td>{{ d.adventure }}</td>
                     <td>{{ d.chara_name }} ({{ d.job }})</td>
                     <td class="text-right">{{ "{:,}".format(d.score) }}</td>
-                    <td></td>
+					<td class="swap-col">
+					  <button class="swap-out-btn" data-role="buffer" data-index="0">OUT</button>
+					  <button class="swap-in-btn"  data-role="buffer" data-index="0" style="display:none;">IN</button>
+					</td>
                   {% else %}
                     <td colspan="2" class="text-center">—</td>
                     <td>—</td>
@@ -167,16 +173,40 @@
         {% endfor %}
       </div>
 
+	  <!-- 2) 새로 추가할 중간 네비게이터 -->
+	  <div class="middle-list">
+		<h3 style="display: inline-block; margin-right: 0.5rem;">
+			새 네비게이터 제목
+		</h3>
+		<button id="edit-members-btn">멤버 편집</button>  {# ① #}
+		
+		<div id="swap-ui" style="display:none; margin-top:1rem; border-top:1px solid #ccc; padding-top:1rem;">
+		  <div><strong>OUT</strong></div>
+		  <div id="out-list" class="characters"></div>    {# 기존 남은 캐릭터 블록 스타일 재활용 #}
+
+		  <div style="margin:0.5rem 0;"><strong>IN</strong></div>
+		  <div id="in-list" class="characters">
+			<p>(비어있음)</p>
+		  </div>
+
+		  <div style="margin-top:1rem; text-align:right;">
+			<button id="confirm-swap-btn">확인</button>
+			<button id="cancel-swap-btn">취소</button>
+		  </div>
+		</div>
+	  </div>
+
       <!-- 오른쪽: 필터 + 남은 캐릭터 -->
       <div class="abandon-list">
         <h3>모험단 필터</h3>
         <ul id="filter-options" class="filter-options">
           <!-- JS에서 체크박스 삽입 -->
         </ul>
-        <div class="mode-toggle">
-          <label><input type="checkbox" id="filter-mode"> 하나라도 일치 (OR 모드)</label>
-        </div>
-
+			<div class="mode-toggle">
+			  <div><label><input type="checkbox" id="filter-mode"> 하나라도 일치 (OR 모드)</label></div>
+			  <div><label><input type="checkbox" id="show-completed"> 클리어된 파티 일반 정렬</label></div>
+			</div>
+			
         <h3>남은 캐릭터</h3>
         {% if abandoned %}
           <ul class="characters">
@@ -204,36 +234,31 @@
 <script>
 document.addEventListener('DOMContentLoaded', ()=> {
   const STORAGE_KEY = 'partyFilterState';
-  const tbodyRows = document.querySelectorAll('.party-list table tbody tr');
-  const optsContainer = document.getElementById('filter-options');
-  const modeToggle = document.getElementById('filter-mode');
+  const optsContainer  = document.getElementById('filter-options');
+  const modeToggle     = document.getElementById('filter-mode');
+  const showCompleted  = document.getElementById('show-completed');
 
-  // 1) 좌측 테이블에서 고유 모험단 수집 (합산 점수 제외)
+  // 1) 모험단 필터 체크박스 생성 (기존 로직)
   const advSet = new Set();
-  tbodyRows.forEach(tr => {
+  document.querySelectorAll('.party-list table tbody tr').forEach(tr => {
     const first = tr.children[0].textContent.trim();
     if (first === '합산 점수') return;
     const adv = tr.children[1].textContent.trim();
     if (adv && adv !== '—') advSet.add(adv);
   });
-
-  // 2) 체크박스 생성
   Array.from(advSet).sort().forEach(adv => {
-    const li = document.createElement('li');
+    const li  = document.createElement('li');
     const lbl = document.createElement('label');
     const chk = document.createElement('input');
-    chk.type = 'checkbox';
+    chk.type  = 'checkbox';
     chk.className = 'filter-checkbox';
     chk.value = adv;
     lbl.append(chk, document.createTextNode(adv));
     li.appendChild(lbl);
     optsContainer.appendChild(li);
-    chk.addEventListener('change', onFilterChange);
   });
 
-  modeToggle.addEventListener('change', onFilterChange);
-
-  // 3) data-adventures 세팅
+  // 2) data-adventures 세팅
   document.querySelectorAll('.party-list table').forEach(table => {
     const advs = Array.from(table.querySelectorAll('tbody tr'))
       .filter(tr => tr.children[0].textContent.trim() !== '합산 점수')
@@ -241,9 +266,9 @@ document.addEventListener('DOMContentLoaded', ()=> {
     table.dataset.adventures = advs.join(',');
   });
 
-  // 4) 로컬스토리지에서 이전 상태 불러오기
+  // 3) 로컬스토리지에서 상태 복원
   const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-  if (saved.checked && Array.isArray(saved.checked)) {
+  if (Array.isArray(saved.checked)) {
     document.querySelectorAll('.filter-checkbox').forEach(chk => {
       chk.checked = saved.checked.includes(chk.value);
     });
@@ -251,28 +276,15 @@ document.addEventListener('DOMContentLoaded', ()=> {
   if (typeof saved.orMode === 'boolean') {
     modeToggle.checked = saved.orMode;
   }
-
-  // 5) 초기 필터 적용
-  applyFilter();
-
-  // ——— 이벤트 핸들러 ———
-  function onFilterChange() {
-    // 저장
-    const checked = Array.from(
-      document.querySelectorAll('.filter-checkbox:checked')
-    ).map(i => i.value);
-    const orMode = modeToggle.checked;
-    localStorage.setItem(STORAGE_KEY,
-      JSON.stringify({ checked, orMode })
-    );
-    // 적용
-    applyFilter();
+  if (typeof saved.showCompleted === 'boolean') {
+    showCompleted.checked = saved.showCompleted;
   }
 
+  // 4) 필터 적용 함수
   function applyFilter(){
     const checked = Array.from(
       document.querySelectorAll('.filter-checkbox:checked')
-    ).map(i=>i.value);
+    ).map(i => i.value);
     const orMode = modeToggle.checked;
     document.querySelectorAll('.party-list table').forEach(tbl => {
       const advs = tbl.dataset.adventures.split(',');
@@ -283,6 +295,106 @@ document.addEventListener('DOMContentLoaded', ()=> {
       tbl.style.display = show ? '' : 'none';
     });
   }
+
+  // 5) 정렬 함수
+  function applySort(){
+    const container = document.querySelector('.party-list');
+    const tables = Array.from(container.querySelectorAll('table'));
+    const includeCompleted = showCompleted.checked;
+    tables.sort((a, b) => {
+      const aComp = a.classList.contains('completed');
+      const bComp = b.classList.contains('completed');
+      if (includeCompleted) {
+        return Number(a.dataset.id) - Number(b.dataset.id);
+      }
+      if (aComp !== bComp) {
+        return aComp ? 1 : -1;
+      }
+      return Number(a.dataset.id) - Number(b.dataset.id);
+    });
+    tables.forEach(tbl => container.appendChild(tbl));
+  }
+
+  // 6) 상태 저장 및 필터+정렬 적용
+  function onStateChange(){
+    const checked = Array.from(
+      document.querySelectorAll('.filter-checkbox:checked')
+    ).map(i => i.value);
+    const orMode = modeToggle.checked;
+    const sc     = showCompleted.checked;
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ checked, orMode, showCompleted: sc })
+    );
+    applyFilter();
+    applySort();
+  }
+  
+  // 파티 편집
+  // 1) DOM 레퍼런스
+  const editBtn    = document.getElementById('edit-members-btn');
+  const swapUI     = document.getElementById('swap-ui');
+  const outList    = document.getElementById('out-list');
+  const inList     = document.getElementById('in-list');
+  const confirmBtn = document.getElementById('confirm-swap-btn');
+  const cancelBtn  = document.getElementById('cancel-swap-btn');
+
+  // 2) 편집 모드 토글 
+  editBtn.addEventListener('click', ()=>{
+    const isEditing = swapUI.style.display === 'none';
+    swapUI.style.display = isEditing ? '' : 'none';
+    document.body.classList.toggle('editing', isEditing);  // ← 추가
+    if (isEditing) initSwap();
+  });
+
+  // 3) 초기화 함수
+  function initSwap(){
+    outList.innerHTML = '';
+    inList.innerHTML  = '<p>(비어있음)</p>';
+    // TODO: 여기서 선택된 테이블에서 캐릭터 꺼내 outList에 렌더
+  }
+
+  // 4) 카드 클릭 이동 로직
+  outList.addEventListener('click', e => {
+    if (e.target.matches('.character-card')) moveCard(e.target, inList);
+  });
+  inList.addEventListener('click', e => {
+    if (e.target.matches('.character-card')) moveCard(e.target, outList);
+  });
+  function moveCard(cardEl, targetList){
+    if (targetList === inList) {
+      if (inList.querySelector('.character-card')) {
+        const existing = inList.querySelector('.character-card');
+        moveCard(existing, document.querySelector('.abandon-list .characters'));
+        inList.innerHTML = '';
+      }
+      inList.innerHTML = '';
+      targetList.appendChild(cardEl);
+    } else {
+      targetList.appendChild(cardEl);
+    }
+  }
+
+  // 5) 취소 버튼
+  cancelBtn.addEventListener('click', ()=> {
+    swapUI.style.display = 'none';
+  });
+
+  // 6) 확인 버튼
+  confirmBtn.addEventListener('click', ()=> {
+    // TODO: outList, inList 에서 data-id 추출 → 서버에 전송
+  });
+
+  // 7) 이벤트 핸들러 바인딩
+  document.querySelectorAll('.filter-checkbox').forEach(chk =>
+    chk.addEventListener('change', onStateChange)
+  );
+  modeToggle.addEventListener('change', onStateChange);
+  showCompleted.addEventListener('change', onStateChange);
+
+  // 8) 초기 적용
+  applyFilter();
+  applySort();
 });
 </script>
 {% endblock %}

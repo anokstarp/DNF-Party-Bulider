@@ -189,20 +189,47 @@ table td input[type="checkbox"] {
 
 /* 체크박스 크기 키우기 (transform 방식) */
 input[type="checkbox"] {
-  transform: scale(1.5);       /* 1.5배 크게 */
-  margin: 0.25rem;             /* 주변 여백 조금 확보 */
+  transform: scale(1.5);
+  margin: 0.25rem;
 }
 
+/* 레이아웃 컨테이너 */
 .party-wrapper {
   display: flex;
   align-items: flex-start;
   gap: 2rem;
 }
 
-/* 기존 .abandon-list 스타일에 margin-left:auto 추가 */
+/* 1) 파티 목록을 왼쪽으로 고정 */
+.party-list {
+  flex: 0 0 auto;
+  margin-right: auto; /* ← 여기에 auto 마진 추가 */
+}
+
+/* 2) 중간 네비게이터 (일반 간격) */
+.middle-list {
+  flex: 0 0 40ch;
+  /* margin-left: auto 삭제 */
+  /* gap은 .party-wrapper의 gap으로 충분 */
+  position: sticky;
+  top: 1rem;
+  max-height: calc(100vh - 6rem);
+  overflow-y: auto;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  background: #fff;
+}
+.middle-list h3 {
+  margin-top: 0;
+  font-size: 1.1rem;
+  border-bottom: 1px solid #ccc;
+  padding-bottom: 0.25rem;
+}
+
+/* 3) 오른쪽 네비게이터 (일반 간격) */
 .abandon-list {
   flex: 0 0 30ch;
-  margin-left: auto;    /* ← 이 한 줄만 추가! */
+  margin-left: 2rem; /* 일반 gap 유지 */
   position: sticky;
   top: 1rem;
   max-height: calc(100vh - 6rem);
@@ -210,4 +237,39 @@ input[type="checkbox"] {
   padding: 0.5rem;
   border: 1px solid #ddd;
   background: #fafafa;
+}
+
+/* 액션 버튼을 작게 조정 */
+.party-list button,
+.abandon-list button {
+  padding: 0.10rem 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.2;
+}
+
+/* 1) 테이블 셀 패딩 줄이기 */
+.party-list table th,
+.party-list table td {
+  padding: 0.3rem 0.5rem;   /* 위아래 3px, 좌우 6px */
+}
+
+
+/* 멤버 편집 버튼 크기 조정 */
+#edit-members-btn {
+  padding: 0.25rem 0.5rem;   /* 위아래 4px, 좌우 8px */
+  font-size: 0.875rem;       /* 기본보다 0.125rem 작게 */
+  line-height: 1.2;
+  margin: 0;                 /* 필요하면 여백도 조정 *//* 기본적으로 OUT/IN 버튼 숨김 */
+}
+
+/* 기본적으로 OUT/IN 버튼 숨김 */
+.swap-out-btn,
+.swap-in-btn {
+  display: none;
+}
+
+/* .editing 클래스가 body나 wrapper에 있을 때만 보이게 */
+.editing .swap-out-btn,
+.editing .swap-in-btn {
+  display: inline-block;  /* 또는 inline-flex 등 */
 }
