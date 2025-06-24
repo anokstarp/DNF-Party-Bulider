@@ -4,6 +4,7 @@ import subprocess
 import json
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from app import get_db_connection
+from scripts.party_maker_print import compute_party_score
 
 party_bp = Blueprint('party', __name__, url_prefix='/party')
 
@@ -160,3 +161,66 @@ def format_korean(num):
     return " ".join(parts) or "0"
     
 party_bp.add_app_template_filter(format_korean, 'korean')
+
+
+@party_bp.route('/swap', methods=['POST'])
+def swap_members():
+    data = request.get_json()
+    party_id = data['party_id']
+    conn = get_db_connection()
+
+    # 1) OUT 처리
+    out = data.get('out', {})
+    if out:
+        # 컬럼 결정
+        if out['role'] == 'buffer':
+            col = 'buffer'
+        else:
+            # slot: "1" → dealer1
+            col = f"dealer{int(out['slot'])}"
+        conn.execute(
+            f"UPDATE party SET {col} = ? WHERE id = ?",
+            (json.dumps(out, ensure_ascii=False), party_id)
+        )
+
+    # 2) IN 처리
+    inn = data.get('in', {})
+    if inn:
+        if inn['role'] == 'buffer':
+            col = 'buffer'
+        else:
+            col = f"dealer{int(inn['slot'])}"
+        # 남은 캐릭터 테이블에서 삭제
+        conn.execute(
+            "DELETE FROM abandonment WHERE type = ? AND character = ?",
+            (data['role'], json.dumps(inn, ensure_ascii=False))
+        )
+        conn.execute(
+            f"UPDATE party SET {col} = ? WHERE id = ?",
+            (json.dumps(inn, ensure_ascii=False), party_id)
+        )
+
+    # 3) 합산 점수 재계산
+    # 기존 스크립트를 참고해서 members 리스트를 불러온 뒤
+    rows = conn.execute(
+        "SELECT buffer, dealer1, dealer2, dealer3 FROM party WHERE id = ?",
+        (party_id,)
+    ).fetchone()
+    members = []
+    for raw in (rows['buffer'], rows['dealer1'], rows['dealer2'], rows['dealer3']):
+        if raw:
+            m = json.loads(raw)
+            # compute_party_score 스크립트가 기대하는 키로 매핑
+            m['is_buffer'] = bool(m.get('isbuffer', 0))
+            members.append(m)
+    # 여기서는 scripts/party_maker_print.py 의 compute_party_score 함수를 import 해서 사용
+    from ..scripts.party_maker_print import compute_party_score
+    new_score = compute_party_score(members)
+    conn.execute(
+        "UPDATE party SET result = ? WHERE id = ?",
+        (new_score, party_id)
+    )
+
+    conn.commit()
+    conn.close()
+    return ('', 204)

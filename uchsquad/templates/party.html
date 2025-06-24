@@ -22,13 +22,11 @@
       filter: grayscale(100%);
       opacity: 0.6;
     }
-
     .party-wrapper {
       display: flex;
       align-items: flex-start;
       gap: 2rem;
     }
-
     .party-list {
       flex: 0 0 auto;
     }
@@ -37,8 +35,7 @@
       table-layout: fixed;
       margin-bottom: 1rem;
     }
-
-    /* 오른쪽 네비: 필터 + 남은 캐릭터 */
+    /* 오른쪽: 남은 캐릭터 리스트 */
     .abandon-list {
       flex: 0 0 40ch;
       margin-left: auto;
@@ -50,20 +47,60 @@
       border: 1px solid #ddd;
       background: #fafafa;
     }
-    .abandon-list h3 { margin: 0.5rem 0 0.25rem; font-size:1.1rem; border-bottom:1px solid #ccc; padding-bottom:0.25rem; }
-    .abandon-list .filter-options { list-style:none; padding:0; margin:0.5rem 0 1rem; }
-    .abandon-list .filter-options li { margin-bottom:0.25rem; font-size:0.9rem; }
-    .abandon-list .filter-options label { display:flex; align-items:center; }
-    .abandon-list .filter-options input { margin-right:0.25rem; }
-    .abandon-list .mode-toggle { margin-bottom:1rem; font-size:0.9rem; }
-    .abandon-list ul.characters { list-style:none; padding:0; margin:0.5rem 0; }
+    .abandon-list h3 {
+      margin: 0.5rem 0 0.25rem;
+      font-size: 1.1rem;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 0.25rem;
+    }
+    .abandon-list .filter-options {
+      list-style: none;
+      padding: 0;
+      margin: 0.5rem 0 1rem;
+    }
+    .abandon-list .filter-options li {
+      margin-bottom: 0.25rem;
+      font-size: 0.9rem;
+    }
+    .abandon-list .filter-options label {
+      display: flex;
+      align-items: center;
+    }
+    .abandon-list .filter-options input {
+      margin-right: 0.25rem;
+    }
+    .abandon-list .mode-toggle {
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+    }
+    .abandon-list ul.characters {
+      list-style: none;
+      padding: 0;
+      margin: 0.5rem 0;
+    }
     .abandon-list ul.characters li {
-      margin-bottom:0.5rem;
-      padding:0.5rem;
-      border:1px solid #ccc;
-      border-radius:4px;
-      background:#fff;
-      font-size:0.9rem;
+      margin-bottom: 0.5rem;
+      padding: 0.5rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #fff;
+      font-size: 0.9rem;
+    }
+    /* 카드 스타일 */
+    .character-card {
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 0.5rem;
+      margin-bottom: 0.5rem;
+      background: #fff;
+    }
+    .character-card .card-top {
+      font-weight: bold;
+      margin-bottom: 0.25rem;
+    }
+    .character-card .card-bottom {
+      font-size: 0.9rem;
+      color: #555;
     }
   </style>
 
@@ -84,24 +121,19 @@
 
   {% if parties %}
     <div class="party-wrapper">
+      {% set prefixes = {'temple':'여','azure':'애','venus':'베'} %}
+
       <!-- 왼쪽: 파티 목록 -->
-	    {% set prefixes = {
-		  'temple': '여',
-		  'azure' : '애',
-		  'venus' : '베'
-		} %}
-	  
       <div class="party-list">
         {% for p in parties %}
-		  {# ① 바깥 루프 인덱스를 partyIndex 에 저장 #}
-		  {% set partyIndex = loop.index %}
+          {% set partyIndex = loop.index %}
           <table class="border table-auto {% if p.is_completed %}completed{% endif %}" data-id="{{ p.id }}">
             <colgroup>
               <col style="width:7ch">
               <col style="width:15ch">
               <col style="width:28ch">
               <col style="width:15ch">
-              <col style="width:8ch">    <!-- 액션 열 -->
+              <col style="width:8ch">
             </colgroup>
             <thead class="bg-gray-100">
               <tr>
@@ -113,367 +145,275 @@
               </tr>
             </thead>
             <tbody>
-              {# 버퍼 1 #}
-			  <tr class="border-b">
-			    <td>버퍼1</td>
-			    <td>{{ p.buffer.adventure }}</td>
-			    <td>{{ p.buffer.chara_name }} ({{ p.buffer.job }})</td>
-			    <td class="text-right">{{ "{:,}".format(p.buffer.score) }}</td>
-			    <td class="swap-col">
-				  <button class="swap-out-btn"
-				          data-role="buffer"
-				          data-index="0"
-				          data-party="{{ partyIndex }}"
-				          data-slot="{{ i }}"
-				  >OUT</button>
-			    </td>
-			  </tr>
-              {# 딜러 3명 #}
-			  {% for i in range(3) %}
-			    {% set d = p.dealers[i] %}
-			    <tr class="border-b">
-				  <td>딜러{{ i+1 }}</td>
-				  {% if d %}
-				    <td>{{ d.adventure }}</td>
-				    <td>{{ d.chara_name }} ({{ d.job }})</td>
-					<td class="text-right">
-					  {% if d.isbuffer %}
-						{{ "{:,}".format(d.score) }}
-					  {% else %}
-						{{ d.score | int | korean }}
-					  {% endif %}
-					</td>
-				  {% else %}
-				    <td colspan="2" class="text-center">—</td>
-				    <td>—</td>
-				  {% endif %}
-				  <!-- 빈칸이든 아니든 항상 OUT 버튼 -->
-				  <td class="swap-col">
-				    <button class="swap-out-btn" data-role="dealer" data-index="{{i}}" data-party="{{ partyIndex }}"  {# ← 여기 #} data-slot="{{ i }}">OUT</button>
-				  </td>
-  			    </tr>
-			  {% endfor %}
-              {# 합산 점수 + 완료 버튼 #}
-				<tr class="bg-gray-100">
-				  <td colspan="3" class="text-right font-semibold">합산 점수</td>
-				  <td class="text-right font-semibold">
-					{{ "{:.2f}".format(p.result) if p.result is not none else '—' }}
-				  </td>
-				  <td>
-					{% if not p.is_completed %}
-					  <form method="post"
-							action="{{ url_for('party.complete_party') }}"
-							onsubmit="return confirm('이 파티를 던전 클리어 처리하시겠습니까?');">
-						<input type="hidden" name="party_id" value="{{ p.id }}">
-						<input type="hidden" name="role"     value="{{ selected }}">
-						<button type="submit">완료</button>
-					  </form>
-					{% else %}
-					  <form method="post"
-							action="{{ url_for('party.uncomplete_party') }}"
-							onsubmit="return confirm('이 파티를 미완료 상태로 되돌리시겠습니까?');">
-						<input type="hidden" name="party_id" value="{{ p.id }}">
-						<input type="hidden" name="role"     value="{{ selected }}">
-						<button type="submit">복원</button>
-					  </form>
-					{% endif %}
-				  </td>
-				</tr>
+              <!-- 버퍼 -->
+              <tr class="border-b">
+                <td>버퍼1</td>
+                <td>{{ p.buffer.adventure }}</td>
+                <td>{{ p.buffer.chara_name }} ({{ p.buffer.job }})</td>
+                <td class="text-right">{{ "{:,}".format(p.buffer.score) }}</td>
+                <td class="swap-col">
+                  <button class="swap-out-btn"
+                          data-role="buffer"
+                          data-slot="0"
+                          data-party="{{ partyIndex }}">OUT</button>
+                </td>
+              </tr>
+              <!-- 딜러 -->
+              {% for i in range(3) %}
+                {% set d = p.dealers[i] %}
+                <tr class="border-b">
+                  <td>딜러{{ i+1 }}</td>
+                  {% if d %}
+                    <td>{{ d.adventure }}</td>
+                    <td>{{ d.chara_name }} ({{ d.job }})</td>
+                    <td class="text-right">
+                      {% if d.isbuffer %}
+                        {{ "{:,}".format(d.score) }}
+                      {% else %}
+                        {{ d.score | int | korean }}
+                      {% endif %}
+                    </td>
+                  {% else %}
+                    <td colspan="2" class="text-center">—</td>
+                    <td>—</td>
+                  {% endif %}
+                  <td class="swap-col">
+                    <button class="swap-out-btn"
+                            data-role="dealer"
+                            data-slot="{{ i }}"
+                            data-party="{{ partyIndex }}">OUT</button>
+                  </td>
+                </tr>
+              {% endfor %}
+              <!-- 합산 점수 & 완료 -->
+              <tr class="bg-gray-100">
+                <td colspan="3" class="text-right font-semibold">합산 점수</td>
+                <td class="text-right font-semibold">
+                  {{ "{:.2f}".format(p.result) if p.result is not none else '—' }}
+                </td>
+                <td>
+                  {% if not p.is_completed %}
+                    <form method="post"
+                          action="{{ url_for('party.complete_party') }}"
+                          onsubmit="return confirm('이 파티를 던전 클리어 처리하시겠습니까?');">
+                      <input type="hidden" name="party_id" value="{{ p.id }}">
+                      <input type="hidden" name="role" value="{{ selected }}">
+                      <button type="submit">완료</button>
+                    </form>
+                  {% else %}
+                    <form method="post"
+                          action="{{ url_for('party.uncomplete_party') }}"
+                          onsubmit="return confirm('이 파티를 미완료 상태로 되돌리시겠습니까?');">
+                      <input type="hidden" name="party_id" value="{{ p.id }}">
+                      <input type="hidden" name="role" value="{{ selected }}">
+                      <button type="submit">복원</button>
+                    </form>
+                  {% endif %}
+                </td>
+              </tr>
             </tbody>
           </table>
         {% endfor %}
       </div>
 
-	  <!-- 2) 새로 추가할 중간 네비게이터 -->
-	  <div class="middle-list">
-	    <h3>캐릭터 편집</h3>
-
-	    <button id="edit-members-btn" class="filter-btn">
-		  멤버 편집
-	    </button>
-		
-		<div id="swap-ui" style="display:none; margin-top:0.1rem; border-top:1px solid #ccc; padding-top:0.1rem;">
-		  <div><strong>OUT</strong></div>
-		  <div id="out-list" class="characters">
-		    <p>(비어있음)</p>
-		  </div>    {# 기존 남은 캐릭터 블록 스타일 재활용 #}
-
-		  <div style="margin:0.5rem 0;"><strong>IN</strong></div>
-		  <div id="in-list" class="characters">
-			<p>(비어있음)</p>
-		  </div>
-
-		  <div style="margin-top:1rem; text-align:right;">
-			<button id="confirm-swap-btn">확인</button>
-			<button id="cancel-swap-btn">취소</button>
-		  </div>
-		</div>
-	  </div>
+      <!-- 중간: 편집 UI -->
+      <div class="middle-list">
+        <h3>캐릭터 편집</h3>
+        <button id="edit-members-btn">멤버 편집</button>
+        <div id="swap-ui" style="display:none; margin-top:0.5rem; border-top:1px solid #ccc; padding-top:0.5rem;">
+          <div><strong>OUT</strong></div>
+          <div id="out-list" class="characters"><p>(비어있음)</p></div>
+          <div style="margin:0.5rem 0;"><strong>IN</strong></div>
+          <div id="in-list" class="characters"><p>(비어있음)</p></div>
+          <div style="margin-top:1rem; text-align:right;">
+            <button id="confirm-swap-btn">확인</button>
+            <button id="cancel-swap-btn">취소</button>
+          </div>
+        </div>
+      </div>
 
       <!-- 오른쪽: 필터 + 남은 캐릭터 -->
       <div class="abandon-list">
         <h3>모험단 필터</h3>
-        <ul id="filter-options" class="filter-options">
-          <!-- JS에서 체크박스 삽입 -->
-        </ul>
-			<div class="mode-toggle">
-			  <div><label><input type="checkbox" id="filter-mode"> 하나라도 일치 (OR 모드)</label></div>
-			  <div><label><input type="checkbox" id="show-completed"> 클리어된 파티 일반 정렬</label></div>
-			</div>
-			
-		<h3>남은 캐릭터</h3>
-		{% if abandoned %}
-			<ul class="characters">
-			  {% for c in abandoned %}
-				<li>
-				  <div class="character-card">
-					<div class="card-top">
-					  {{ c.adventure }} — {{ c.chara_name }} ({{ c.job }})
-					</div>
-					<div class="card-bottom">
-					  <span>[{{ '버퍼' if c.isbuffer else '딜러' }}] • 점수: {{ "{:,}".format(c.score) }}</span>
-					  <button class="swap-in-btn" disabled>IN</button>
-					</div>
-				  </div>
-				</li>
-			  {% endfor %}
-			</ul>
-		{% else %}
-		  <p>남은 캐릭터가 없습니다.</p>
-		{% endif %}
+        <ul id="filter-options" class="filter-options"></ul>
+        <div class="mode-toggle">
+          <label><input type="checkbox" id="filter-mode"> 하나라도 일치 (OR 모드)</label><br>
+          <label><input type="checkbox" id="show-completed"> 클리어된 파티 일반 정렬</label>
+        </div>
+        <h3>남은 캐릭터</h3>
+        {% if abandoned %}
+          <ul class="characters">
+            {% for c in abandoned %}
+              <li data-char='{{ c|tojson }}'>
+                <div class="character-card">
+                  <div class="card-top">
+                    {{ c.adventure }} — {{ c.chara_name }} ({{ c.job }})
+                  </div>
+                  <div class="card-bottom">
+                    [{{ '버퍼' if c.isbuffer else '딜러' }}] • 점수: {{ "{:,}".format(c.score) }}
+                    <button class="swap-in-btn" disabled>IN</button>
+                  </div>
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p>남은 캐릭터가 없습니다.</p>
+        {% endif %}
       </div>
     </div>
   {% else %}
-    <div class="text-center text-gray-600 mt-8">
-      해당 유형의 파티가 없습니다.<br>
-      위에서 <strong>파티 재생성</strong> 버튼을 눌러주세요.
-    </div>
+    <p>해당 유형의 파티가 없습니다. 파티 재생성을 눌러주세요.</p>
   {% endif %}
 {% endblock %}
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-  // ── 1) 필터/정렬 로직 ──
-  const STORAGE_KEY   = 'partyFilterState';
-  const optsContainer = document.getElementById('filter-options');
-  const modeToggle    = document.getElementById('filter-mode');
-  const showCompleted = document.getElementById('show-completed');
-
-  // 모험단 체크박스 생성
-  const advSet = new Set();
-  document.querySelectorAll('.party-list table tbody tr').forEach(tr => {
-    if (tr.children[0].textContent.trim() === '합산 점수') return;
-    const adv = tr.children[1].textContent.trim();
-    if (adv && adv !== '—') advSet.add(adv);
-  });
-  Array.from(advSet).sort().forEach(adv => {
-    const li  = document.createElement('li');
-    const lbl = document.createElement('label');
-    const chk = document.createElement('input');
-    chk.type      = 'checkbox';
-    chk.className = 'filter-checkbox';
-    chk.value     = adv;
-    lbl.append(chk, document.createTextNode('\u00A0' + adv));
-    li.appendChild(lbl);
-    optsContainer.appendChild(li);
-  });
-
-  // data-adventures 설정
-  document.querySelectorAll('.party-list table').forEach(table => {
-    const advs = Array.from(table.querySelectorAll('tbody tr'))
-      .filter(tr => tr.children[0].textContent.trim() !== '합산 점수')
-      .map(tr => tr.children[1].textContent.trim());
-    table.dataset.adventures = advs.join(',');
-  });
-
-  // 저장된 필터 상태 복원
-  const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-  if (Array.isArray(saved.checked)) {
-    document.querySelectorAll('.filter-checkbox').forEach(chk => {
-      chk.checked = saved.checked.includes(chk.value);
-    });
-  }
-  if (typeof saved.orMode === 'boolean')  modeToggle.checked    = saved.orMode;
-  if (typeof saved.showCompleted === 'boolean') showCompleted.checked = saved.showCompleted;
-
-  // 필터 함수
-  function applyFilter() {
-    const checked = Array.from(document.querySelectorAll('.filter-checkbox:checked'))
-                         .map(i => i.value);
-    const orMode = modeToggle.checked;
-    document.querySelectorAll('.party-list table').forEach(tbl => {
-      const advs = tbl.dataset.adventures.split(',');
-      const show = !checked.length ||
-                    (orMode
-                      ? checked.some(v => advs.includes(v))
-                      : checked.every(v => advs.includes(v)));
-      tbl.style.display = show ? '' : 'none';
-    });
-  }
-
-  // 정렬 함수
-  function applySort() {
-    const container = document.querySelector('.party-list');
-    const tables    = Array.from(container.querySelectorAll('table'));
-    const includeCompleted = showCompleted.checked;
-    tables.sort((a, b) => {
-      const aComp = a.classList.contains('completed');
-      const bComp = b.classList.contains('completed');
-      if (includeCompleted) {
-        return Number(a.dataset.id) - Number(b.dataset.id);
-      }
-      if (aComp !== bComp) {
-        return aComp ? 1 : -1;
-      }
-      return Number(a.dataset.id) - Number(b.dataset.id);
-    });
-    tables.forEach(tbl => container.appendChild(tbl));
-  }
-
-  // 상태 저장 & 재적용
-  function onStateChange() {
-    const checked = Array.from(document.querySelectorAll('.filter-checkbox:checked'))
-                         .map(i => i.value);
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        checked,
-        orMode: modeToggle.checked,
-        showCompleted: showCompleted.checked
-      })
-    );
-    applyFilter();
-    applySort();
-  }
-
-  document.querySelectorAll('.filter-checkbox').forEach(chk =>
-    chk.addEventListener('change', onStateChange)
-  );
-  modeToggle.addEventListener('change', onStateChange);
-  showCompleted.addEventListener('change', onStateChange);
-
-  applyFilter();
-  applySort();
-
-  // ── 2) 파티 멤버 편집 로직 ──
+document.addEventListener('DOMContentLoaded', ()=> {
+  console.log('🎉 party.js loaded and DOM ready');
+  // DOM 레퍼런스
   const editBtn    = document.getElementById('edit-members-btn');
   const swapUI     = document.getElementById('swap-ui');
   const outList    = document.getElementById('out-list');
   const inList     = document.getElementById('in-list');
   const confirmBtn = document.getElementById('confirm-swap-btn');
   const cancelBtn  = document.getElementById('cancel-swap-btn');
-  
+
   function initSwap() {
     outList.innerHTML = '<p>(비어있음)</p>';
-    inList.innerHTML  = '<p>(비어있음)</p>';
+    inList .innerHTML = '<p>(비어있음)</p>';
   }
-
   function updateInButtons() {
     const hasOut = !!outList.querySelector('.character-card');
-    document.querySelectorAll('.character-card .swap-in-btn').forEach(btn => {
+    document.querySelectorAll('.swap-in-btn').forEach(btn=>{
       btn.disabled = !hasOut;
       btn.style.opacity = hasOut ? '1' : '0.5';
-      btn.style.cursor  = hasOut ? 'pointer' : 'not-allowed';
     });
   }
 
+  // 1) 편집 모드 토글
   editBtn.addEventListener('click', () => {
-    swapUI.style.display  = '';
-    editBtn.style.display = 'none';
-    document.body.classList.add('editing');
+    swapUI.style.display    = '';
+    editBtn.style.display   = 'none';
     initSwap();
     updateInButtons();
   });
 
-  // OUT 버튼 클릭
-  document.querySelectorAll('.swap-out-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      // 이전 선택 해제
-      document.querySelectorAll('.swap-out-btn.selected').forEach(b => {
-        b.classList.remove('selected');
-        b.closest('tr').classList.remove('selected-row');
+  // 2) OUT 버튼 클릭
+  document.querySelectorAll('.swap-out-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      // 강조
+      document.querySelectorAll('.swap-out-btn.selected').forEach(x=>{
+        x.classList.remove('selected');
+        x.closest('tr').classList.remove('selected-row');
       });
-      // 새 선택 강조
       btn.classList.add('selected');
+      btn.closest('tr').classList.add('selected-row');
+
+      // 카드 생성
       const row = btn.closest('tr');
-      row.classList.add('selected-row');
+      const adv  = row.children[1].textContent.trim();
+      const name = row.children[2].textContent.trim();
+      const score= row.children[3].textContent.trim().replace(/,/g,'');
+      const role = btn.dataset.role;
+      const party= btn.dataset.party;
+      const slot = btn.dataset.slot;
 
-      // OUT 카드 렌더
-      const partyIndex = btn.dataset.party;
-      const rawSlot    = Number(btn.dataset.slot) + 1;
-      const adv        = row.children[1].textContent.trim();
-      const nameJob    = row.children[2].textContent.trim();
-      const score      = row.children[3].textContent.trim();
-      const role       = btn.dataset.role === 'buffer' ? '버퍼' : '딜러';
-      const slotIndex  = role === '딜러' ? rawSlot + 1 : 1;
-
-      outList.innerHTML = '';
       const card = document.createElement('div');
       card.className = 'character-card';
+      card.dataset.role      = role;
+      card.dataset.party     = party;
+      card.dataset.slot      = slot;
+      card.dataset.adventure = adv;
+      card.dataset.charaName = name;
+      card.dataset.score     = score;
       card.innerHTML = `
-        <div class="card-top">${adv} — ${nameJob}</div>
-        <div class="card-bottom">${role} - ${score} / ${partyIndex}파티 - ${slotIndex}번</div>
+        <div class="card-top">${adv} — ${name}</div>
+        <div class="card-bottom">
+          ${role==='buffer'?'버퍼':'딜러'} • ${Number(score).toLocaleString()}점<br>
+          파티 ${party} 슬롯 ${Number(slot)+1}
+        </div>
       `;
+      outList.innerHTML = '';
       outList.appendChild(card);
       updateInButtons();
     });
   });
 
-  // 취소
-  cancelBtn.addEventListener('click', e => {
+  // 3) IN 버튼 클릭 (이벤트 위임)
+  document.querySelector('.abandon-list').addEventListener('click', e=>{
+    if (!e.target.matches('.swap-in-btn')) return;
+    const li = e.target.closest('li[data-char]');
+    const data = JSON.parse(li.dataset.char);
+    const card = document.createElement('div');
+    card.className = 'character-card';
+    card.dataset.role      = data.isbuffer? 'buffer':'dealer';
+    card.dataset.adventure = data.adventure;
+    card.dataset.charaName = data.chara_name;
+    card.dataset.score     = data.score;
+    card.innerHTML = `
+      <div class="card-top">${data.adventure} — ${data.chara_name}</div>
+      <div class="card-bottom">
+        ${data.isbuffer?'버퍼':'딜러'} • ${data.score.toLocaleString()}점
+      </div>
+    `;
+    inList.innerHTML = '';
+    inList.appendChild(card);
+    updateInButtons();
+  });
+
+  // 4) 취소
+  cancelBtn.addEventListener('click', e=>{
     e.preventDefault();
     swapUI.style.display  = 'none';
     editBtn.style.display = '';
-    document.body.classList.remove('editing');
-    document.querySelectorAll('.swap-out-btn.selected').forEach(b => b.classList.remove('selected'));
-    document.querySelectorAll('tr.selected-row').forEach(tr => tr.classList.remove('selected-row'));
+    document.querySelectorAll('.swap-out-btn.selected').forEach(x=>x.classList.remove('selected'));
+    document.querySelectorAll('tr.selected-row').forEach(tr=>tr.classList.remove('selected-row'));
     initSwap();
     updateInButtons();
   });
 
-  // 확인 (저장)
-  confirmBtn.addEventListener('click', e => {
+  // 5) 확인 → AJAX
+  confirmBtn.addEventListener('click', async e=>{
     e.preventDefault();
-    // TODO: AJAX or form.submit 으로 저장
-    swapUI.style.display  = 'none';
-    editBtn.style.display = '';
-    document.body.classList.remove('editing');
-    document.querySelectorAll('.swap-out-btn.selected').forEach(b => b.classList.remove('selected'));
-    document.querySelectorAll('tr.selected-row').forEach(tr => tr.classList.remove('selected-row'));
-    updateInButtons();
+    if (!confirm('이대로 적용하시겠습니까?')) return;
+
+    const outCard = outList.querySelector('.character-card');
+    const inCard  = inList .querySelector('.character-card');
+    const partyId = document.querySelector('.swap-out-btn.selected').dataset.party;
+
+    const payload = { party_id: partyId, role: '{{ selected }}', out:{}, in:{} };
+    if (outCard) {
+      payload.out = {
+        role:      outCard.dataset.role,
+        slot:      outCard.dataset.slot,
+        adventure: outCard.dataset.adventure,
+        chara_name:outCard.dataset.charaName,
+        score:     Number(outCard.dataset.score)
+      };
+    }
+    if (inCard) {
+      payload.in = {
+        role:      inCard.dataset.role,
+        adventure: inCard.dataset.adventure,
+        chara_name:inCard.dataset.charaName,
+        score:     Number(inCard.dataset.score)
+      };
+    }
+
+    const res = await fetch('{{ url_for("party.swap_members") }}', {
+      method: 'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      alert('저장 실패: '+res.statusText);
+      return;
+    }
+    location.reload();
   });
 
-  
-  // ── 3) IN 버튼 클릭 (이벤트 위임) ──
-  const abandonList = document.querySelector('.abandon-list');
-  if (abandonList) {
-    abandonList.addEventListener('click', e => {
-      if (!e.target.matches('.swap-in-btn')) return;
-      const li   = e.target.closest('li[data-char]');
-	  if (!li) {
-		console.warn('swap-in-btn 클릭했지만 data-char li를 찾지 못함:', e.target);
-		return;
-	  }
-	  
-      const json = li.dataset.char;
-	  if (!json) {
-		console.warn('data-char가 비어있음:', li);
-		return;
-	  }
-      const data = JSON.parse(json);
-
-      inList.innerHTML = '';
-      const card = document.createElement('div');
-      card.className = 'character-card';
-      card.innerHTML = `
-        <div class="card-top">${data.adventure} — ${data.chara_name} (${data.job})</div>
-        <div class="card-bottom">[${data.isbuffer ? '버퍼' : '딜러'}] • 점수: ${data.score.toLocaleString()}</div>
-      `;
-      inList.appendChild(card);
-      updateInButtons();
-    });
-  }
 });
 </script>
+
 {% endblock %}
