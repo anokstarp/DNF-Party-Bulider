@@ -71,14 +71,25 @@ def list_and_generate():
             # 만약 이미 0/1 정수형으로 왔으면 그냥 bool으로
             completed_flag = bool(r['is_completed'])
 
+        # ① buffer JSON 로드 & isbuffer bool 변환
+        buf = json.loads(r['buffer'])
+        buf['isbuffer'] = bool(int(buf.get('isbuffer', 0)))
+
+        # ② dealers JSON 로드 & isbuffer bool 변환
+        dealers = []
+        for key in ('dealer1', 'dealer2', 'dealer3'):
+            raw = r[key]
+            if raw:
+                d = json.loads(raw)
+                d['isbuffer'] = bool(int(d.get('isbuffer', 0)))
+                dealers.append(d)
+            else:
+                dealers.append(None)
+
         parties.append({
             'id': r['id'],
-            'buffer': json.loads(r['buffer']),
-            'dealers': [
-                json.loads(r['dealer1']) if r['dealer1'] else None,
-                json.loads(r['dealer2']) if r['dealer2'] else None,
-                json.loads(r['dealer3']) if r['dealer3'] else None,
-            ],
+            'buffer': buf,
+            'dealers': dealers,
             'result': r['result'],
             'is_completed': completed_flag,
         })
@@ -136,3 +147,16 @@ def uncomplete_party():
         flash(f'파티 {party_id}를 미완료 상태로 되돌렸습니다.', 'success')
 
     return redirect(url_for('party.list_and_generate', role=role))
+
+def format_korean(num):
+    parts = []
+    eok = num // 100_000_000
+    if eok:
+        parts.append(f"{eok}억")
+        num %= 100_000_000
+    man = num // 10_000
+    if man:
+        parts.append(f"{man}만")
+    return " ".join(parts) or "0"
+    
+party_bp.add_app_template_filter(format_korean, 'korean')

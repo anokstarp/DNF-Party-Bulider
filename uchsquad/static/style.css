@@ -204,8 +204,8 @@ input[type="checkbox"] {
 .party-list {
   flex: 0 0 auto;
   margin-right: auto; /* ← 여기에 auto 마진 추가 */
-}
-
+}	
+	
 /* 2) 중간 네비게이터 (일반 간격) */
 .middle-list {
   flex: 0 0 40ch;
@@ -217,10 +217,11 @@ input[type="checkbox"] {
   overflow-y: auto;
   padding: 0.5rem;
   border: 1px solid #ddd;
-  background: #fff;
+  background: #fafafa;
 }
 .middle-list h3 {
-  margin-top: 0;
+  margin-top: 0.5rem;                    /* 맨 위 공백 제거 */
+  margin-bottom: 0.5rem;            /* 제목과 내용 사이 간격 */
   font-size: 1.1rem;
   border-bottom: 1px solid #ccc;
   padding-bottom: 0.25rem;
@@ -228,7 +229,7 @@ input[type="checkbox"] {
 
 /* 3) 오른쪽 네비게이터 (일반 간격) */
 .abandon-list {
-  flex: 0 0 30ch;
+  flex: 0 0 40ch;
   margin-left: 2rem; /* 일반 gap 유지 */
   position: sticky;
   top: 1rem;
@@ -262,10 +263,50 @@ input[type="checkbox"] {
   margin: 0;                 /* 필요하면 여백도 조정 *//* 기본적으로 OUT/IN 버튼 숨김 */
 }
 
-/* 기본적으로 OUT/IN 버튼 숨김 */
+/* 합산 점수 행 마지막 열 버튼을 꽉 채우기 */
+.party-list table td:last-child form button {
+  display: inline-block;
+  width: 100%;         /* 셀 너비에 딱 맞춤 */
+  margin: 0;           /* 마진 제거 */
+  padding: 0;          /* 패딩 제거 */
+  height: 100%;       /* 텍스트 높이에 맞춰 고정 (필요시 조절) */
+  font-size: 0.85rem;
+  line-height: 1.5em;  /* height와 맞춤 */
+}
+
+/* 셀 자체의 여백도 제거 */
+.party-list table td:last-child {
+  padding: 0.2em;
+  text-align: center;   /* 버튼이 가운데 정렬 */
+  vertical-align: middle;
+}
+
+/* 1) 기본: 버튼 숨김 */
 .swap-out-btn,
 .swap-in-btn {
   display: none;
+}
+
+/* 2) 편집 모드일 때만 버튼 보이기 */
+body.editing .swap-out-btn,
+body.editing .swap-in-btn {
+  display: inline-block;
+  width: 100%;         /* 셀 너비에 딱 맞춤 */
+  margin: 0;           /* 마진 제거 */
+  padding: 0;          /* 패딩 제거 */
+  height: 100%;       /* 텍스트 높이에 맞춰 고정 (필요시 조절) */
+  font-size: 0.85rem;
+  line-height: 1.5em;  /* height와 맞춤 */
+}
+
+.party-list table td.swap-col {
+  padding: 0.2em;           /* 기존 last-child와 동일 */
+  text-align: center;       /* 버튼 가운데 정렬 */
+  vertical-align: middle;   /* 세로 중앙 정렬 */
+}
+
+.swap-col {
+  padding: 0;
 }
 
 /* .editing 클래스가 body나 wrapper에 있을 때만 보이게 */
@@ -273,3 +314,131 @@ input[type="checkbox"] {
 .editing .swap-in-btn {
   display: inline-block;  /* 또는 inline-flex 등 */
 }
+
+/* 중간 네비게이터 헤더: 제목과 버튼 플렉스 배치 */
+.middle-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+/* 제목 밑줄을 좀 더 두껍고 길게 */
+.middle-list-header h3 {
+  
+  margin: 0;
+  padding-bottom: 0.25rem;
+  border-bottom: 2px solid #666;
+  /* width: 100%; */
+}
+
+/* 버튼 조금 더 아담하게 */
+.middle-list-header button {
+  padding: 0.2rem 0.5rem;
+  font-size: 0.85rem;
+  line-height: 1;
+  margin-left: 1rem;
+}
+
+body.editing #edit-members-btn {
+  display: none;
+}
+
+body.editing #swap-ui {
+  border-top: none !important;
+  margin-top: 0.1rem;   /* 필요에 따라 조정 */
+  padding-top: 0.1rem;
+}
+
+/* 3) h3 은 항상 border-bottom 유지 */
+.middle-list h3 {
+  border-bottom: 1px solid #ccc;   /* 기본 스타일로 복원 */
+}
+
+#confirm-swap-btn,
+#cancel-swap-btn {
+  padding: 0.4rem 0.8rem;   /* 위아래 3px, 좌우 6px */
+  font-size: 0.8rem;        /* 텍스트도 작게 */
+  line-height: 1;           /* 버튼 높이에 딱 맞춤 */
+  margin: 0 0.25rem;        /* 버튼 간 약간의 간격 */
+  height: auto;             /* 컨테이너 높이에 맞춰 자동 조절 */
+  display: inline-block;
+}
+
+/* 선택된 행 강조 */
+.selected-row {
+  background-color: #e6f4ff;  /* 연한 파랑 */
+}
+
+/* OUT 버튼이 눌린 상태 스타일 */
+.swap-out-btn.selected {
+  background-color: #007bff;
+  color: white;
+}
+
+/* IN 버튼 스타일 */
+.swap-in-btn {
+  margin-left: 0.5rem;
+  padding: 0.15rem 0.4rem;
+  font-size: 0.8rem;
+}
+
+/* 카드 컨테이너 */
+.character-card {
+  box-sizing: border-box;      /* 패딩·보더를 width에 포함 */
+  width: 100%;                 /* 부모 <li> 너비만큼 딱 채움 */
+  padding: 0.75rem 0.75rem 0.75rem 0.75rem;
+  position: relative;
+  margin-top: 0.2rem;
+  margin-bottom: 0.2rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+}
+
+.character-card .swap-in-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 카드 상단: 모험단 · 이름(직업) · 스코어 */
+.character-card .card-top {
+  margin-bottom: 0.25rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.character-card .card-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  white-space: nowrap;    /* 내용이 줄 바꿈되지 않도록 고정 */
+  gap: 0.5rem;            /* 텍스트–버튼 사이 간격 */
+  font-size: 0.85rem;
+  color: #555;
+}
+
+.character-card .card-bottom span {
+  flex: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  align-items: center;
+}
+
+.character-card .card-bottom button.swap-in-btn {
+  flex: none !important;        /* flex 비활성화 */
+  width: auto !important;       /* 폭 auto 고정 */
+  min-width: 0 !important;      /* flex-basis 에 밀리지 않도록 */
+  padding: 0.05rem 1rem;       /* 원하는 만큼만 */
+  margin-left: auto;            /* 스팬 뒤로 밀기 */
+  font-size: 0.85rem;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.party-list table tbody tr.selected-row {
+  background-color: #e6f4ff !important;
+}
+

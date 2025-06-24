@@ -344,10 +344,10 @@ if __name__ == '__main__':
     for p in parties:
         if p['buffers']:
             buf = p['buffers'][0]
-            buf_j = json.dumps({k: buf[k] for k in ('adventure','chara_name','job','fame','score')}, ensure_ascii=False)
+            buf_j = json.dumps({k: buf[k] for k in ('adventure','chara_name','job','fame','score')} | {'isbuffer': buf['isbuffer']}, ensure_ascii=False)
         else:
             buf_j = ''
-        dj = [json.dumps({k: d[k] for k in ('adventure','chara_name','job','fame','score')}, ensure_ascii=False) for d in p['dealers'][:3]]
+        dj = [json.dumps({k: d[k] for k in ('adventure','chara_name','job','fame','score')} | {'isbuffer': d['isbuffer']}, ensure_ascii=False) for d in p['dealers'][:3]]
         dj += [''] * (3 - len(dj))
         cur.execute(
             "INSERT INTO party(type, buffer, dealer1, dealer2, dealer3, result) VALUES(?,?,?,?,?,?)",

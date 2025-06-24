@@ -40,7 +40,7 @@
 
     /* 오른쪽 네비: 필터 + 남은 캐릭터 */
     .abandon-list {
-      flex: 0 0 30ch;
+      flex: 0 0 40ch;
       margin-left: auto;
       position: sticky;
       top: 1rem;
@@ -93,6 +93,8 @@
 	  
       <div class="party-list">
         {% for p in parties %}
+		  {# ① 바깥 루프 인덱스를 partyIndex 에 저장 #}
+		  {% set partyIndex = loop.index %}
           <table class="border table-auto {% if p.is_completed %}completed{% endif %}" data-id="{{ p.id }}">
             <colgroup>
               <col style="width:7ch">
@@ -107,41 +109,50 @@
                 <th>모험단</th>
                 <th>이름(직업)</th>
                 <th>스코어</th>
-                <th>액션</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
               {# 버퍼 1 #}
-              <tr class="border-b">
-                <td>버퍼1</td>
-                <td>{{ p.buffer.adventure }}</td>
-                <td>{{ p.buffer.chara_name }} ({{ p.buffer.job }})</td>
-                <td class="text-right">{{ "{:,}".format(p.buffer.score) }}</td>
-				<td class="swap-col">
-				  <button class="swap-out-btn" data-role="buffer" data-index="0">OUT</button>
-				  <button class="swap-in-btn"  data-role="buffer" data-index="0" style="display:none;">IN</button>
-				</td>
-              </tr>
+			  <tr class="border-b">
+			    <td>버퍼1</td>
+			    <td>{{ p.buffer.adventure }}</td>
+			    <td>{{ p.buffer.chara_name }} ({{ p.buffer.job }})</td>
+			    <td class="text-right">{{ "{:,}".format(p.buffer.score) }}</td>
+			    <td class="swap-col">
+				  <button class="swap-out-btn"
+				          data-role="buffer"
+				          data-index="0"
+				          data-party="{{ partyIndex }}"
+				          data-slot="{{ i }}"
+				  >OUT</button>
+			    </td>
+			  </tr>
               {# 딜러 3명 #}
-              {% for i in range(3) %}
-                {% set d = p.dealers[i] %}
-                <tr class="border-b">
-                  <td>딜러{{ i+1 }}</td>
-                  {% if d %}
-                    <td>{{ d.adventure }}</td>
-                    <td>{{ d.chara_name }} ({{ d.job }})</td>
-                    <td class="text-right">{{ "{:,}".format(d.score) }}</td>
-					<td class="swap-col">
-					  <button class="swap-out-btn" data-role="buffer" data-index="0">OUT</button>
-					  <button class="swap-in-btn"  data-role="buffer" data-index="0" style="display:none;">IN</button>
+			  {% for i in range(3) %}
+			    {% set d = p.dealers[i] %}
+			    <tr class="border-b">
+				  <td>딜러{{ i+1 }}</td>
+				  {% if d %}
+				    <td>{{ d.adventure }}</td>
+				    <td>{{ d.chara_name }} ({{ d.job }})</td>
+					<td class="text-right">
+					  {% if d.isbuffer %}
+						{{ "{:,}".format(d.score) }}
+					  {% else %}
+						{{ d.score | int | korean }}
+					  {% endif %}
 					</td>
-                  {% else %}
-                    <td colspan="2" class="text-center">—</td>
-                    <td>—</td>
-                    <td></td>
-                  {% endif %}
-                </tr>
-              {% endfor %}
+				  {% else %}
+				    <td colspan="2" class="text-center">—</td>
+				    <td>—</td>
+				  {% endif %}
+				  <!-- 빈칸이든 아니든 항상 OUT 버튼 -->
+				  <td class="swap-col">
+				    <button class="swap-out-btn" data-role="dealer" data-index="{{i}}" data-party="{{ partyIndex }}"  {# ← 여기 #} data-slot="{{ i }}">OUT</button>
+				  </td>
+  			    </tr>
+			  {% endfor %}
               {# 합산 점수 + 완료 버튼 #}
 				<tr class="bg-gray-100">
 				  <td colspan="3" class="text-right font-semibold">합산 점수</td>
@@ -175,14 +186,17 @@
 
 	  <!-- 2) 새로 추가할 중간 네비게이터 -->
 	  <div class="middle-list">
-		<h3 style="display: inline-block; margin-right: 0.5rem;">
-			새 네비게이터 제목
-		</h3>
-		<button id="edit-members-btn">멤버 편집</button>  {# ① #}
+	    <h3>캐릭터 편집</h3>
+
+	    <button id="edit-members-btn" class="filter-btn">
+		  멤버 편집
+	    </button>
 		
-		<div id="swap-ui" style="display:none; margin-top:1rem; border-top:1px solid #ccc; padding-top:1rem;">
+		<div id="swap-ui" style="display:none; margin-top:0.1rem; border-top:1px solid #ccc; padding-top:0.1rem;">
 		  <div><strong>OUT</strong></div>
-		  <div id="out-list" class="characters"></div>    {# 기존 남은 캐릭터 블록 스타일 재활용 #}
+		  <div id="out-list" class="characters">
+		    <p>(비어있음)</p>
+		  </div>    {# 기존 남은 캐릭터 블록 스타일 재활용 #}
 
 		  <div style="margin:0.5rem 0;"><strong>IN</strong></div>
 		  <div id="in-list" class="characters">
@@ -207,19 +221,26 @@
 			  <div><label><input type="checkbox" id="show-completed"> 클리어된 파티 일반 정렬</label></div>
 			</div>
 			
-        <h3>남은 캐릭터</h3>
-        {% if abandoned %}
-          <ul class="characters">
-            {% for c in abandoned %}
-              <li>
-                [{{ '버퍼' if c.isbuffer else '딜러' }}]
-                {{ c.adventure }} — {{ c.chara_name }}, score: {{ "{:,}".format(c.score) }}
-              </li>
-            {% endfor %}
-          </ul>
-        {% else %}
-          <p>남은 캐릭터가 없습니다.</p>
-        {% endif %}
+		<h3>남은 캐릭터</h3>
+		{% if abandoned %}
+			<ul class="characters">
+			  {% for c in abandoned %}
+				<li>
+				  <div class="character-card">
+					<div class="card-top">
+					  {{ c.adventure }} — {{ c.chara_name }} ({{ c.job }})
+					</div>
+					<div class="card-bottom">
+					  <span>[{{ '버퍼' if c.isbuffer else '딜러' }}] • 점수: {{ "{:,}".format(c.score) }}</span>
+					  <button class="swap-in-btn" disabled>IN</button>
+					</div>
+				  </div>
+				</li>
+			  {% endfor %}
+			</ul>
+		{% else %}
+		  <p>남은 캐릭터가 없습니다.</p>
+		{% endif %}
       </div>
     </div>
   {% else %}
@@ -232,17 +253,17 @@
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', ()=> {
-  const STORAGE_KEY = 'partyFilterState';
-  const optsContainer  = document.getElementById('filter-options');
-  const modeToggle     = document.getElementById('filter-mode');
-  const showCompleted  = document.getElementById('show-completed');
+document.addEventListener('DOMContentLoaded', () => {
+  // ── 1) 필터/정렬 로직 ──
+  const STORAGE_KEY   = 'partyFilterState';
+  const optsContainer = document.getElementById('filter-options');
+  const modeToggle    = document.getElementById('filter-mode');
+  const showCompleted = document.getElementById('show-completed');
 
-  // 1) 모험단 필터 체크박스 생성 (기존 로직)
+  // 모험단 체크박스 생성
   const advSet = new Set();
   document.querySelectorAll('.party-list table tbody tr').forEach(tr => {
-    const first = tr.children[0].textContent.trim();
-    if (first === '합산 점수') return;
+    if (tr.children[0].textContent.trim() === '합산 점수') return;
     const adv = tr.children[1].textContent.trim();
     if (adv && adv !== '—') advSet.add(adv);
   });
@@ -250,15 +271,15 @@ document.addEventListener('DOMContentLoaded', ()=> {
     const li  = document.createElement('li');
     const lbl = document.createElement('label');
     const chk = document.createElement('input');
-    chk.type  = 'checkbox';
+    chk.type      = 'checkbox';
     chk.className = 'filter-checkbox';
-    chk.value = adv;
-    lbl.append(chk, document.createTextNode(adv));
+    chk.value     = adv;
+    lbl.append(chk, document.createTextNode('\u00A0' + adv));
     li.appendChild(lbl);
     optsContainer.appendChild(li);
   });
 
-  // 2) data-adventures 세팅
+  // data-adventures 설정
   document.querySelectorAll('.party-list table').forEach(table => {
     const advs = Array.from(table.querySelectorAll('tbody tr'))
       .filter(tr => tr.children[0].textContent.trim() !== '합산 점수')
@@ -266,40 +287,35 @@ document.addEventListener('DOMContentLoaded', ()=> {
     table.dataset.adventures = advs.join(',');
   });
 
-  // 3) 로컬스토리지에서 상태 복원
+  // 저장된 필터 상태 복원
   const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
   if (Array.isArray(saved.checked)) {
     document.querySelectorAll('.filter-checkbox').forEach(chk => {
       chk.checked = saved.checked.includes(chk.value);
     });
   }
-  if (typeof saved.orMode === 'boolean') {
-    modeToggle.checked = saved.orMode;
-  }
-  if (typeof saved.showCompleted === 'boolean') {
-    showCompleted.checked = saved.showCompleted;
-  }
+  if (typeof saved.orMode === 'boolean')  modeToggle.checked    = saved.orMode;
+  if (typeof saved.showCompleted === 'boolean') showCompleted.checked = saved.showCompleted;
 
-  // 4) 필터 적용 함수
-  function applyFilter(){
-    const checked = Array.from(
-      document.querySelectorAll('.filter-checkbox:checked')
-    ).map(i => i.value);
+  // 필터 함수
+  function applyFilter() {
+    const checked = Array.from(document.querySelectorAll('.filter-checkbox:checked'))
+                         .map(i => i.value);
     const orMode = modeToggle.checked;
     document.querySelectorAll('.party-list table').forEach(tbl => {
       const advs = tbl.dataset.adventures.split(',');
       const show = !checked.length ||
                     (orMode
-                      ? checked.some(v=>advs.includes(v))
-                      : checked.every(v=>advs.includes(v)));
+                      ? checked.some(v => advs.includes(v))
+                      : checked.every(v => advs.includes(v)));
       tbl.style.display = show ? '' : 'none';
     });
   }
 
-  // 5) 정렬 함수
-  function applySort(){
+  // 정렬 함수
+  function applySort() {
     const container = document.querySelector('.party-list');
-    const tables = Array.from(container.querySelectorAll('table'));
+    const tables    = Array.from(container.querySelectorAll('table'));
     const includeCompleted = showCompleted.checked;
     tables.sort((a, b) => {
       const aComp = a.classList.contains('completed');
@@ -315,86 +331,149 @@ document.addEventListener('DOMContentLoaded', ()=> {
     tables.forEach(tbl => container.appendChild(tbl));
   }
 
-  // 6) 상태 저장 및 필터+정렬 적용
-  function onStateChange(){
-    const checked = Array.from(
-      document.querySelectorAll('.filter-checkbox:checked')
-    ).map(i => i.value);
-    const orMode = modeToggle.checked;
-    const sc     = showCompleted.checked;
+  // 상태 저장 & 재적용
+  function onStateChange() {
+    const checked = Array.from(document.querySelectorAll('.filter-checkbox:checked'))
+                         .map(i => i.value);
     localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ checked, orMode, showCompleted: sc })
+      JSON.stringify({
+        checked,
+        orMode: modeToggle.checked,
+        showCompleted: showCompleted.checked
+      })
     );
     applyFilter();
     applySort();
   }
-  
-  // 파티 편집
-  // 1) DOM 레퍼런스
-  const editBtn    = document.getElementById('edit-members-btn');
-  const swapUI     = document.getElementById('swap-ui');
-  const outList    = document.getElementById('out-list');
-  const inList     = document.getElementById('in-list');
-  const confirmBtn = document.getElementById('confirm-swap-btn');
-  const cancelBtn  = document.getElementById('cancel-swap-btn');
 
-  // 2) 편집 모드 토글 
-  editBtn.addEventListener('click', ()=>{
-    const isEditing = swapUI.style.display === 'none';
-    swapUI.style.display = isEditing ? '' : 'none';
-    document.body.classList.toggle('editing', isEditing);  // ← 추가
-    if (isEditing) initSwap();
-  });
-
-  // 3) 초기화 함수
-  function initSwap(){
-    outList.innerHTML = '';
-    inList.innerHTML  = '<p>(비어있음)</p>';
-    // TODO: 여기서 선택된 테이블에서 캐릭터 꺼내 outList에 렌더
-  }
-
-  // 4) 카드 클릭 이동 로직
-  outList.addEventListener('click', e => {
-    if (e.target.matches('.character-card')) moveCard(e.target, inList);
-  });
-  inList.addEventListener('click', e => {
-    if (e.target.matches('.character-card')) moveCard(e.target, outList);
-  });
-  function moveCard(cardEl, targetList){
-    if (targetList === inList) {
-      if (inList.querySelector('.character-card')) {
-        const existing = inList.querySelector('.character-card');
-        moveCard(existing, document.querySelector('.abandon-list .characters'));
-        inList.innerHTML = '';
-      }
-      inList.innerHTML = '';
-      targetList.appendChild(cardEl);
-    } else {
-      targetList.appendChild(cardEl);
-    }
-  }
-
-  // 5) 취소 버튼
-  cancelBtn.addEventListener('click', ()=> {
-    swapUI.style.display = 'none';
-  });
-
-  // 6) 확인 버튼
-  confirmBtn.addEventListener('click', ()=> {
-    // TODO: outList, inList 에서 data-id 추출 → 서버에 전송
-  });
-
-  // 7) 이벤트 핸들러 바인딩
   document.querySelectorAll('.filter-checkbox').forEach(chk =>
     chk.addEventListener('change', onStateChange)
   );
   modeToggle.addEventListener('change', onStateChange);
   showCompleted.addEventListener('change', onStateChange);
 
-  // 8) 초기 적용
   applyFilter();
   applySort();
+
+  // ── 2) 파티 멤버 편집 로직 ──
+  const editBtn    = document.getElementById('edit-members-btn');
+  const swapUI     = document.getElementById('swap-ui');
+  const outList    = document.getElementById('out-list');
+  const inList     = document.getElementById('in-list');
+  const confirmBtn = document.getElementById('confirm-swap-btn');
+  const cancelBtn  = document.getElementById('cancel-swap-btn');
+  
+  function initSwap() {
+    outList.innerHTML = '<p>(비어있음)</p>';
+    inList.innerHTML  = '<p>(비어있음)</p>';
+  }
+
+  function updateInButtons() {
+    const hasOut = !!outList.querySelector('.character-card');
+    document.querySelectorAll('.character-card .swap-in-btn').forEach(btn => {
+      btn.disabled = !hasOut;
+      btn.style.opacity = hasOut ? '1' : '0.5';
+      btn.style.cursor  = hasOut ? 'pointer' : 'not-allowed';
+    });
+  }
+
+  editBtn.addEventListener('click', () => {
+    swapUI.style.display  = '';
+    editBtn.style.display = 'none';
+    document.body.classList.add('editing');
+    initSwap();
+    updateInButtons();
+  });
+
+  // OUT 버튼 클릭
+  document.querySelectorAll('.swap-out-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      // 이전 선택 해제
+      document.querySelectorAll('.swap-out-btn.selected').forEach(b => {
+        b.classList.remove('selected');
+        b.closest('tr').classList.remove('selected-row');
+      });
+      // 새 선택 강조
+      btn.classList.add('selected');
+      const row = btn.closest('tr');
+      row.classList.add('selected-row');
+
+      // OUT 카드 렌더
+      const partyIndex = btn.dataset.party;
+      const rawSlot    = Number(btn.dataset.slot) + 1;
+      const adv        = row.children[1].textContent.trim();
+      const nameJob    = row.children[2].textContent.trim();
+      const score      = row.children[3].textContent.trim();
+      const role       = btn.dataset.role === 'buffer' ? '버퍼' : '딜러';
+      const slotIndex  = role === '딜러' ? rawSlot + 1 : 1;
+
+      outList.innerHTML = '';
+      const card = document.createElement('div');
+      card.className = 'character-card';
+      card.innerHTML = `
+        <div class="card-top">${adv} — ${nameJob}</div>
+        <div class="card-bottom">${role} - ${score} / ${partyIndex}파티 - ${slotIndex}번</div>
+      `;
+      outList.appendChild(card);
+      updateInButtons();
+    });
+  });
+
+  // 취소
+  cancelBtn.addEventListener('click', e => {
+    e.preventDefault();
+    swapUI.style.display  = 'none';
+    editBtn.style.display = '';
+    document.body.classList.remove('editing');
+    document.querySelectorAll('.swap-out-btn.selected').forEach(b => b.classList.remove('selected'));
+    document.querySelectorAll('tr.selected-row').forEach(tr => tr.classList.remove('selected-row'));
+    initSwap();
+    updateInButtons();
+  });
+
+  // 확인 (저장)
+  confirmBtn.addEventListener('click', e => {
+    e.preventDefault();
+    // TODO: AJAX or form.submit 으로 저장
+    swapUI.style.display  = 'none';
+    editBtn.style.display = '';
+    document.body.classList.remove('editing');
+    document.querySelectorAll('.swap-out-btn.selected').forEach(b => b.classList.remove('selected'));
+    document.querySelectorAll('tr.selected-row').forEach(tr => tr.classList.remove('selected-row'));
+    updateInButtons();
+  });
+
+  
+  // ── 3) IN 버튼 클릭 (이벤트 위임) ──
+  const abandonList = document.querySelector('.abandon-list');
+  if (abandonList) {
+    abandonList.addEventListener('click', e => {
+      if (!e.target.matches('.swap-in-btn')) return;
+      const li   = e.target.closest('li[data-char]');
+	  if (!li) {
+		console.warn('swap-in-btn 클릭했지만 data-char li를 찾지 못함:', e.target);
+		return;
+	  }
+	  
+      const json = li.dataset.char;
+	  if (!json) {
+		console.warn('data-char가 비어있음:', li);
+		return;
+	  }
+      const data = JSON.parse(json);
+
+      inList.innerHTML = '';
+      const card = document.createElement('div');
+      card.className = 'character-card';
+      card.innerHTML = `
+        <div class="card-top">${data.adventure} — ${data.chara_name} (${data.job})</div>
+        <div class="card-bottom">[${data.isbuffer ? '버퍼' : '딜러'}] • 점수: ${data.score.toLocaleString()}</div>
+      `;
+      inList.appendChild(card);
+      updateInButtons();
+    });
+  }
 });
 </script>
 {% endblock %}
