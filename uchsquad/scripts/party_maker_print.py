@@ -67,7 +67,7 @@ def compute_party_score(members):
     dealer_sum = sum(d['score'] // 10_000_000 for d in dealers)
     sub_buff_factor = 1.0
     if sub_buff:
-        sub_buff_factor = 1 + (sub_buff['score'] / 1_000_000) * 0.08
+        sub_buff_factor = 1 + (sub_buff['score'] / 1_200_000) * 0.08
     return buff_factor * dealer_sum * sub_buff_factor
 
 def assign_parties(characters):

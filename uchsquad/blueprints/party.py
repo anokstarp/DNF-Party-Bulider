@@ -73,8 +73,13 @@ def list_and_generate():
             completed_flag = bool(r['is_completed'])
 
         # ① buffer JSON 로드 & isbuffer bool 변환
-        buf = json.loads(r['buffer'])
-        buf['isbuffer'] = bool(int(buf.get('isbuffer', 0)))
+        raw_buf = r['buffer']
+        if raw_buf:
+            buf = json.loads(raw_buf)
+            buf['isbuffer'] = bool(int(buf.get('isbuffer', 0)))
+        else:
+            buf = None
+
 
         # ② dealers JSON 로드 & isbuffer bool 변환
         dealers = []
@@ -92,7 +97,7 @@ def list_and_generate():
             'buffer': buf,
             'dealers': dealers,
             'result': r['result'],
-            'is_completed': completed_flag,
+            'is_completed': bool(int(r['is_completed'])),
         })
 
     ab_rows = conn.execute(
@@ -168,37 +173,165 @@ def swap_members():
     data = request.get_json()
     party_id = data['party_id']
     conn = get_db_connection()
-
-    # 1) OUT 처리
+    
     out = data.get('out', {})
-    if out:
-        # 컬럼 결정
+    inn = data.get('in', {})
+    
+    has_out = bool(out.get('adventure') and out['adventure'] != '—')
+    has_in  = bool(inn .get('adventure') and inn ['adventure'] != '—')
+    
+    # OUT만 있을 때
+    if has_out and not has_in:
         if out['role'] == 'buffer':
             col = 'buffer'
         else:
-            # slot: "1" → dealer1
-            col = f"dealer{int(out['slot'])}"
-        conn.execute(
-            f"UPDATE party SET {col} = ? WHERE id = ?",
-            (json.dumps(out, ensure_ascii=False), party_id)
-        )
+            col = f"dealer{int(out['slot']) + 1}"
 
-    # 2) IN 처리
-    inn = data.get('in', {})
-    if inn:
-        if inn['role'] == 'buffer':
+        conn.execute(f"UPDATE party SET {col} = NULL WHERE id = ?", (party_id,))
+
+        # 2. chara_name에서 (직업) 분리
+        pure_name = out['chara_name'].split(' (')[0].strip()
+        orig = conn.execute(
+            "SELECT adventure, chara_name, job, fame, score, isbuffer FROM user_character WHERE adventure = ? AND chara_name = ?",
+            (out['adventure'], pure_name)
+        ).fetchone()
+        if orig:
+            orig_dict = dict(orig)
+            # 3. abandonment에 완성된 데이터 저장!
+            conn.execute(
+                "INSERT INTO abandonment (type, character) VALUES (?, ?)",
+                (data['role'], json.dumps(orig_dict, ensure_ascii=False))
+            )
+        else:
+            print("OUT시 원본 캐릭터를 못찾음!", out['adventure'], pure_name)
+
+
+    elif has_in and not has_out:
+        # 1) 슬롯 기반으로 col 결정 (0→buffer, 그 외→dealer)
+        slot = int(out.get('slot') or inn.get('slot'))
+        if slot == 0:
             col = 'buffer'
         else:
-            col = f"dealer{int(inn['slot'])}"
-        # 남은 캐릭터 테이블에서 삭제
+            col = f"dealer{slot+1}"
+
+        # 2) 동일 모험단 중복 체크
+        row = conn.execute(
+            "SELECT buffer, dealer1, dealer2, dealer3 FROM party WHERE id = ?",
+            (party_id,)
+        ).fetchone()
+        advs = set()
+        for raw in (row['buffer'], row['dealer1'], row['dealer2'], row['dealer3']):
+            if raw and raw not in ('null', '', None):
+                try:
+                    mem = json.loads(raw)
+                    advs.add(mem['adventure'])
+                except Exception:
+                    pass
+        if inn['adventure'] in advs:
+            conn.close()
+            return ('동일 모험단 캐릭터가 이미 파티에 있습니다!', 409)
+
+        # 3) abandonment에서 완성된 JSON 데이터 바로 SELECT
+        pure_name = inn['chara_name'].split(' (')[0].strip()
+        row = conn.execute(
+            """
+            SELECT character
+              FROM abandonment
+             WHERE type = ?
+               AND json_extract(character, '$.adventure') = ?
+               AND json_extract(character, '$.chara_name') = ?
+            """,
+            (data['role'], inn['adventure'], pure_name)
+        ).fetchone()
+        
+        if not row:
+            conn.close()
+            return ('abandonment에서 해당 캐릭터를 찾을 수 없습니다!', 404)
+        target = json.loads(row['character'])
+
+        # 4) abandonment에서 삭제 후 party에 저장
         conn.execute(
             "DELETE FROM abandonment WHERE type = ? AND character = ?",
-            (data['role'], json.dumps(inn, ensure_ascii=False))
+            (data['role'], json.dumps(target, ensure_ascii=False))
         )
         conn.execute(
             f"UPDATE party SET {col} = ? WHERE id = ?",
-            (json.dumps(inn, ensure_ascii=False), party_id)
+            (json.dumps(target, ensure_ascii=False), party_id)
         )
+
+
+    elif has_out and has_in:
+        # ── 1) OUT 처리 ──
+        # 1-1) 파티에서 OUT 슬롯 비우기
+        slot = int(out.get('slot') or inn.get('slot'))
+        col_out = 'buffer' if slot==0 else f"dealer{slot+1}"
+        conn.execute(f"UPDATE party SET {col_out}=NULL WHERE id=?", (party_id,))
+
+        # 1-2) DB에서 원본 캐릭터 조회 → abandonment
+        pure_out = out['chara_name'].split(' (')[0].strip()
+        orig = conn.execute(
+            "SELECT adventure,chara_name,job,fame,score,isbuffer "
+            "FROM user_character WHERE adventure=? AND chara_name=?",
+            (out['adventure'], pure_out)
+        ).fetchone()
+        if orig:
+            conn.execute(
+                "INSERT INTO abandonment(type,character) VALUES(?,?)",
+                (data['role'], json.dumps(dict(orig), ensure_ascii=False))
+            )
+        else:
+            print("SWAP-OUT: 원본 캐릭터 못찾음!", out['adventure'], pure_out)
+
+        # ── 2) 중복 체크 ──
+        row = conn.execute(
+            "SELECT buffer,dealer1,dealer2,dealer3 FROM party WHERE id=?",
+            (party_id,)
+        ).fetchone()
+        advs = {
+            json.loads(x)['adventure']
+            for x in (row['buffer'],row['dealer1'],row['dealer2'],row['dealer3'])
+            if x and x not in ('null','',None)
+        }
+        advs.discard(out['adventure'])
+        if inn['adventure'] in advs:
+            conn.close()
+            return ('동일 모험단 캐릭터가 이미 파티에 있습니다!', 409)
+
+        # ── 3) IN 처리 ──
+        # 3-1) 슬롯 결정 (out/inn 중 있는 쪽에서)
+        slot = int(out.get('slot') or inn.get('slot'))
+        col_in = 'buffer' if slot==0 else f"dealer{slot+1}"
+
+        # 3-2) 이미 abandonment에 있는 완성형 JSON 꺼내기
+        pure_in = inn['chara_name'].split(' (')[0].strip()
+        r = conn.execute(
+            """
+            SELECT character
+              FROM abandonment
+             WHERE type=?
+               AND json_extract(character,'$.adventure')=?
+               AND json_extract(character,'$.chara_name')=?
+            """,
+            (data['role'], inn['adventure'], pure_in)
+        ).fetchone()
+        if not r:
+            conn.close()
+            return ('abandonment에서 IN할 캐릭터를 찾을 수 없습니다!',404)
+        target = json.loads(r['character'])
+
+        # 3-3) abandonment에서 삭제하고 파티에 업데이트
+        conn.execute(
+            "DELETE FROM abandonment WHERE type=? AND character=?",
+            (data['role'], json.dumps(target, ensure_ascii=False))
+        )
+        col_in = col_out
+        conn.execute(
+            f"UPDATE party SET {col_in}=? WHERE id=?",
+            (json.dumps(target, ensure_ascii=False), party_id)
+        )
+
+
+
 
     # 3) 합산 점수 재계산
     # 기존 스크립트를 참고해서 members 리스트를 불러온 뒤
@@ -206,15 +339,25 @@ def swap_members():
         "SELECT buffer, dealer1, dealer2, dealer3 FROM party WHERE id = ?",
         (party_id,)
     ).fetchone()
+    
+    if not rows:
+        print(f"party id {party_id}가 존재하지 않음!")
+        conn.close()
+        return ('', 404)  # 또는 에러 처리
+    
     members = []
     for raw in (rows['buffer'], rows['dealer1'], rows['dealer2'], rows['dealer3']):
-        if raw:
-            m = json.loads(raw)
-            # compute_party_score 스크립트가 기대하는 키로 매핑
-            m['is_buffer'] = bool(m.get('isbuffer', 0))
-            members.append(m)
+        # raw가 None(빈 슬롯)이면 무시
+        if raw is not None and raw != 'null' and raw != '':
+            try:
+                m = json.loads(raw)
+                m['is_buffer'] = bool(m.get('isbuffer', 0))
+                members.append(m)
+            except Exception as e:
+                # 혹시라도 이상한 데이터 들어오면 무시하고 계속 진행
+                print("멤버 로딩 중 오류:", e)
+                continue
     # 여기서는 scripts/party_maker_print.py 의 compute_party_score 함수를 import 해서 사용
-    from ..scripts.party_maker_print import compute_party_score
     new_score = compute_party_score(members)
     conn.execute(
         "UPDATE party SET result = ? WHERE id = ?",

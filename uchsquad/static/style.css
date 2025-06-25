@@ -198,6 +198,7 @@ input[type="checkbox"] {
   display: flex;
   align-items: flex-start;
   gap: 2rem;
+  width: 100%;
 }
 
 /* 1) 파티 목록을 왼쪽으로 고정 */
@@ -284,12 +285,7 @@ input[type="checkbox"] {
 /* 1) 기본: 버튼 숨김 */
 .swap-out-btn,
 .swap-in-btn {
-  display: none;
-}
-
-/* 2) 편집 모드일 때만 버튼 보이기 */
-body.editing .swap-out-btn,
-body.editing .swap-in-btn {
+  visibility: hidden;
   display: inline-block;
   width: 100%;         /* 셀 너비에 딱 맞춤 */
   margin: 0;           /* 마진 제거 */
@@ -394,11 +390,6 @@ body.editing #swap-ui {
   border: 1px solid #ccc;
   border-radius: 4px;
   background: #fff;
-}
-
-.character-card .swap-in-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 /* 카드 상단: 모험단 · 이름(직업) · 스코어 */
