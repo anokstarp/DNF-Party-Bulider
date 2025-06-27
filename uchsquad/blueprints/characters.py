@@ -1,9 +1,10 @@
 from flask import Blueprint, render_template, request, redirect, url_for, current_app
+from flask import jsonify
 import subprocess
 import os
 from datetime import datetime 
 
-from app import get_db_connection
+from db import get_db_connection
 
 characters_bp = Blueprint('characters', __name__, template_folder='../templates')
 

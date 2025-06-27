@@ -3,7 +3,7 @@ import sys
 import subprocess
 import json
 from flask import Blueprint, render_template, request, redirect, url_for, flash
-from app import get_db_connection
+from db import get_db_connection
 from scripts.party_maker_print import compute_party_score
 
 party_bp = Blueprint('party', __name__, url_prefix='/party')
@@ -185,7 +185,7 @@ def swap_members():
         if out['role'] == 'buffer':
             col = 'buffer'
         else:
-            col = f"dealer{int(out['slot']) + 1}"
+            col = f"dealer{int(out['slot'])}"
 
         conn.execute(f"UPDATE party SET {col} = NULL WHERE id = ?", (party_id,))
 
@@ -207,12 +207,14 @@ def swap_members():
 
 
     elif has_in and not has_out:
-        # 1) 슬롯 기반으로 col 결정 (0→buffer, 그 외→dealer)
-        slot = int(out.get('slot') or inn.get('slot'))
-        if slot == 0:
+        if out['role'] == 'buffer' and int(out['slot']) == 0:
+            if inn.get('role') != 'buffer':
+                conn.close()
+                return ('버퍼 자리에 딜러를 넣을 수 없습니다!', 400)
             col = 'buffer'
         else:
-            col = f"dealer{slot+1}"
+            col = f"dealer{int(out['slot'])}"
+
 
         # 2) 동일 모험단 중복 체크
         row = conn.execute(
@@ -260,14 +262,18 @@ def swap_members():
         )
 
 
-    elif has_out and has_in:
-        # ── 1) OUT 처리 ──
-        # 1-1) 파티에서 OUT 슬롯 비우기
-        slot = int(out.get('slot') or inn.get('slot'))
-        col_out = 'buffer' if slot==0 else f"dealer{slot+1}"
-        conn.execute(f"UPDATE party SET {col_out}=NULL WHERE id=?", (party_id,))
+    elif has_out and has_in:            
+        if out['role'] == 'buffer' and int(out['slot']) == 0:
+            if inn.get('role') != 'buffer':
+                conn.close()
+                return ('버퍼 자리에 딜러를 넣을 수 없습니다!', 400)
+            col = 'buffer'
+        else:
+            col = f"dealer{int(out['slot'])}"
+            
+        conn.execute(f"UPDATE party SET {col}=NULL WHERE id=?", (party_id,))
 
-        # 1-2) DB에서 원본 캐릭터 조회 → abandonment
+        # 2) OUT 캐릭터를 abandonment에 추가 (DB 원본)
         pure_out = out['chara_name'].split(' (')[0].strip()
         orig = conn.execute(
             "SELECT adventure,chara_name,job,fame,score,isbuffer "
@@ -279,10 +285,8 @@ def swap_members():
                 "INSERT INTO abandonment(type,character) VALUES(?,?)",
                 (data['role'], json.dumps(dict(orig), ensure_ascii=False))
             )
-        else:
-            print("SWAP-OUT: 원본 캐릭터 못찾음!", out['adventure'], pure_out)
 
-        # ── 2) 중복 체크 ──
+        # 3) 모험단 중복 체크 (out['adventure'] 빼고)
         row = conn.execute(
             "SELECT buffer,dealer1,dealer2,dealer3 FROM party WHERE id=?",
             (party_id,)
@@ -297,17 +301,12 @@ def swap_members():
             conn.close()
             return ('동일 모험단 캐릭터가 이미 파티에 있습니다!', 409)
 
-        # ── 3) IN 처리 ──
-        # 3-1) 슬롯 결정 (out/inn 중 있는 쪽에서)
-        slot = int(out.get('slot') or inn.get('slot'))
-        col_in = 'buffer' if slot==0 else f"dealer{slot+1}"
-
-        # 3-2) 이미 abandonment에 있는 완성형 JSON 꺼내기
+        # 4) IN 처리: 같은 col 에 삽입
+        #    → col_out 과 동일하게 쓰기만 하면 됩니다.
         pure_in = inn['chara_name'].split(' (')[0].strip()
         r = conn.execute(
             """
-            SELECT character
-              FROM abandonment
+            SELECT character FROM abandonment
              WHERE type=?
                AND json_extract(character,'$.adventure')=?
                AND json_extract(character,'$.chara_name')=?
@@ -316,17 +315,16 @@ def swap_members():
         ).fetchone()
         if not r:
             conn.close()
-            return ('abandonment에서 IN할 캐릭터를 찾을 수 없습니다!',404)
+            return ('abandonment에서 IN할 캐릭터를 찾을 수 없습니다!', 404)
         target = json.loads(r['character'])
 
-        # 3-3) abandonment에서 삭제하고 파티에 업데이트
         conn.execute(
             "DELETE FROM abandonment WHERE type=? AND character=?",
             (data['role'], json.dumps(target, ensure_ascii=False))
         )
-        col_in = col_out
+        # ★ 여기서도 똑같은 col 사용
         conn.execute(
-            f"UPDATE party SET {col_in}=? WHERE id=?",
+            f"UPDATE party SET {col} = ? WHERE id = ?",
             (json.dumps(target, ensure_ascii=False), party_id)
         )
 

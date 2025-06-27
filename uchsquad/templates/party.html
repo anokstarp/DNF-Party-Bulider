@@ -113,10 +113,10 @@
         <option value="venus"  {% if selected=='venus'  %}selected{% endif %}>Venus</option>
       </select>
     </form>
-    <form method="post" action="" style="display:inline; margin-left:0.5rem;">
-      <input type="hidden" name="role" value="{{ selected }}">
-      <button type="submit">파티 재생성</button>
-    </form>
+	<form method="post" action="" style="display:inline; margin-left:0.5rem;" id="regen-form">
+	  <input type="hidden" name="role" value="{{ selected }}">
+	  <button type="submit" id="regen-btn">파티 재생성</button>
+	</form>
   </div>
 
   {% if parties %}
@@ -186,7 +186,7 @@
                   <td class="swap-col">
                     <button class="swap-out-btn"
                             data-role="dealer"
-                            data-slot="{{ i }}"
+                            data-slot="{{ i + 1 }}"
                             data-party="{{ p.id }}">OUT</button>
                   </td>
                 </tr>
@@ -277,6 +277,18 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', ()=> {
+  //재생성 버튼알람
+  document.getElementById('regen-form').addEventListener('submit', function(e) {
+    if(!confirm('기존 모든 파티 데이터가 삭제되고 새로 생성됩니다.\n정말 재생성 하시겠습니까?')) {
+      e.preventDefault();
+      return;
+    }
+    if(!confirm('정말의 정말로 재생성 하시겠습니까?')) {
+      e.preventDefault();
+      return;
+    }
+  });
+
   // DOM 레퍼런스
   const editBtn    = document.getElementById('edit-members-btn');
   const swapUI     = document.getElementById('swap-ui');
@@ -419,6 +431,7 @@ document.addEventListener('DOMContentLoaded', ()=> {
     if (inCard) {
       payload.in = {
         role:      inCard.dataset.role,
+		slot:	   outCard.dataset.slot,
         adventure: inCard.dataset.adventure,
         chara_name:inCard.dataset.charaName,
         score:     Number(inCard.dataset.score)

@@ -2,6 +2,8 @@ from flask import Blueprint, render_template, request, redirect, url_for, curren
 import sqlite3
 import os
 
+from db import get_db_connection
+
 users_bp = Blueprint('users', __name__, template_folder='../templates')
 
 # blueprints/users.py
@@ -11,12 +13,6 @@ import sqlite3
 import os
 
 users_bp = Blueprint('users', __name__, template_folder='../templates')
-
-def get_db_connection():
-    db_path = os.path.join(current_app.root_path, 'database', 'DB.sqlite')
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    return conn
 
 @users_bp.route('/', methods=['GET'])
 def list_users():

@@ -109,7 +109,14 @@
           <td>{{ c.chara_name }}</td>
           <td>{{ c.job }}</td>
           <td>{{ "{:,}".format(c.fame) }}</td>
-          <td>{{ "{:,}".format(c.score) }}</td>
+          <td>
+		    {% if c.isbuffer %}
+			  {{ "{:,}".format(c.score) }}
+			{% else %}
+			  <span class="score-text">{{ c.score | int | korean }}</span>
+			  <span class="score-raw" style="display:none">{{ c.score }}</span>
+			{% endif %}
+		  </td>
           <td>
             {% if delta > 0 %}
               <span style="color:red;">+{{ "{:,}".format(delta) }}</span>

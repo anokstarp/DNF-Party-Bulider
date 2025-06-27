@@ -70,190 +70,117 @@ def compute_party_score(members):
         sub_buff_factor = 1 + (sub_buff['score'] / 1_200_000) * 0.08
     return buff_factor * dealer_sum * sub_buff_factor
 
+# assign_parties 함수 중, swap 및 leftover 보정 루프만 부분 교체
+
 def assign_parties(characters):
-    # 입력: 캐릭터 딕셔너리 목록
-    # account -> adventure, name -> chara_name 정규화
+    # 입력: 캐릭터 딕셔너리 목록 (is_buffer, score, adventure, chara_name 포함)
+    # 1) account->adventure, name->chara_name 정규화
     for c in characters:
         if "account" in c and "adventure" not in c:
             c["adventure"] = c["account"]
         if "name" in c and "chara_name" not in c:
             c["chara_name"] = c["name"]
 
-    buffers = [ch for ch in characters if ch['is_buffer']]
-    dps = [ch for ch in characters if not ch['is_buffer']]
-    B = len(buffers)
+    from collections import defaultdict
+
+    # 2) 파티 수 결정
     total = len(characters)
-    # 모험단별 인원수 집계
     adv_counts = Counter(ch['adventure'] for ch in characters)
     M_max = max(adv_counts.values()) if adv_counts else 0
-
-    # 파티수 결정
-    P_needed = math.ceil(total / 4)
-    P = max(P_needed, M_max)
-    P = min(P, B)  # 버퍼 수 만큼만 파티 생성 가능
+    P_needed = total // 4
+    buffers = [ch for ch in characters if ch['is_buffer']]
+    P = min(P_needed, len(buffers))
     if P == 0:
         return [], characters[:], [], 0.0, 0.0
 
-    # 파티 리스트 초기화
+    # 3) 파티 초기화
     parties = [{'members': [], 'adventures': set()} for _ in range(P)]
-    party_scores = [0] * P
-
-    # 버퍼 점수 순 정렬 후 각 파티에 1명씩 우선 배치
-    buffers_sorted = sorted(buffers, key=lambda x: x['score'], reverse=True)
     assigned = set()
-    for i in range(P):
-        buf = buffers_sorted[i]
-        parties[i]['members'].append(buf)
-        parties[i]['adventures'].add(buf['adventure'])
-        assigned.add((buf['adventure'], buf['chara_name']))
-        party_scores[i] += buf['score']
 
-    # 남는 버퍼와 딜러 합쳐 점수 내림차순 정렬
-    extra_buffers = buffers_sorted[P:]
-    remaining_chars = sorted(extra_buffers + dps, key=lambda x: x['score'], reverse=True)
+    # 4) 모험단별 그룹화 및 정렬
+    groups = defaultdict(list)
+    for c in characters:
+        groups[c['adventure']].append(c)
+    adventures = sorted(groups.keys(), key=lambda adv: len(groups[adv]), reverse=True)
 
-    # 점수 낮은 파티부터 조건 맞는 곳에 분배
-    for char in remaining_chars:
-        candidates = []
-        for idx in range(P):
-            party = parties[idx]
-            if len(party['members']) >= 4:
+    # 5) 그룹 순서대로 배치
+    for idx_adv, adv in enumerate(adventures):
+        group = groups[adv]
+        # 짝수 인덱스: 내림차순, 홀수: 오름차순
+        reverse = (idx_adv % 2 == 0)
+        sorted_group = sorted(group, key=lambda x: x['score'], reverse=reverse)
+        for char in sorted_group:
+            # 버퍼/딜러 슬롯 규칙에 따라 후보 파티 찾기
+            if char['is_buffer']:
+                # 버퍼 없는 파티 우선
+                cands = [i for i, p in enumerate(parties)
+                         if len(p['members']) < 4
+                         and adv not in p['adventures']
+                         and sum(m['is_buffer'] for m in p['members']) == 0]
+                # 모두 버퍼 있으면 빈 슬롯만 체크
+                if not cands and all(sum(m['is_buffer'] for m in p['members']) > 0 for p in parties):
+                    cands = [i for i, p in enumerate(parties)
+                             if len(p['members']) < 4 and adv not in p['adventures']]
+            else:
+                cands = [i for i, p in enumerate(parties)
+                         if len(p['members']) < 4 and adv not in p['adventures']]
+            if not cands:
                 continue
-            if char['adventure'] in party['adventures']:
-                continue
-            candidates.append((party_scores[idx], idx))
-        if candidates:
-            # 점수 낮은 파티 우선
-            _, sel = min(candidates)
+            # 최소 멤버 수, 파티 점수 기준으로 선택
+            scores = [compute_party_score(p['members']) for p in parties]
+            sel = min(cands, key=lambda i: (len(parties[i]['members']), scores[i]))
             parties[sel]['members'].append(char)
-            parties[sel]['adventures'].add(char['adventure'])
+            parties[sel]['adventures'].add(adv)
             assigned.add((char['adventure'], char['chara_name']))
-            party_scores[sel] += char['score']
 
-    # 할당 안된 캐릭터는 leftover
+    # 6) leftover 계산
     leftover = [c for c in characters if (c['adventure'], c['chara_name']) not in assigned]
 
-    # --- 편차 최소화: 파티간 반복 교환 (swap) ---
-    max_iter = 500
-    improved = True
-    iter_count = 0
-
-    def get_std(scores):
+    # 7) 내부 스왑 기반 균형 보정 (최대 100회)
+    def std(scores):
         avg = sum(scores) / len(scores)
         return math.sqrt(sum((s - avg) ** 2 for s in scores) / len(scores)) if len(scores) > 1 else 0.0
 
-    while improved and iter_count < max_iter:
-        improved = False
-        iter_count += 1
-        # 현재 각 파티 점수
+    for _ in range(100):
         party_scores = [compute_party_score(p['members']) for p in parties]
-        avg_score = sum(party_scores) / len(party_scores)
-        std = get_std(party_scores)
+        best_std = std(party_scores)
         best_swap = None
-        best_std = std
-        # 파티 쌍 순회
         for i in range(P):
-            for j in range(P):
-                if i == j:
-                    continue
+            for j in range(i+1, P):
                 for m1 in parties[i]['members']:
                     for m2 in parties[j]['members']:
-                        # 같은 모험단이 상대파티에 이미 있으면 skip
-                        if m2['adventure'] in [m['adventure'] for m in parties[i]['members'] if m != m1]:
-                            continue
-                        if m1['adventure'] in [m['adventure'] for m in parties[j]['members'] if m != m2]:
-                            continue
-                        # 버퍼 조건
-                        i_buf_cnt = sum(m['is_buffer'] for m in parties[i]['members'])
-                        j_buf_cnt = sum(m['is_buffer'] for m in parties[j]['members'])
-                        i_buf_next = i_buf_cnt - m1['is_buffer'] + m2['is_buffer']
-                        j_buf_next = j_buf_cnt - m2['is_buffer'] + m1['is_buffer']
-                        if i_buf_next < 1 or j_buf_next < 1:
-                            continue
+                        # 모험단 중복
+                        if m2['adventure'] in {m['adventure'] for m in parties[i]['members'] if m!=m1}: continue
+                        if m1['adventure'] in {m['adventure'] for m in parties[j]['members'] if m!=m2}: continue
+                        # 버퍼 최소 1명 보장
+                        if sum(m['is_buffer'] for m in parties[i]['members']) - m1['is_buffer'] + m2['is_buffer'] < 1: continue
+                        if sum(m['is_buffer'] for m in parties[j]['members']) - m2['is_buffer'] + m1['is_buffer'] < 1: continue
                         # 인원 제한
-                        if len(parties[i]['members']) > 4 or len(parties[j]['members']) > 4:
-                            continue
-                        # swap 시뮬
-                        new_i_members = [m for m in parties[i]['members'] if m != m1] + [m2]
-                        new_j_members = [m for m in parties[j]['members'] if m != m2] + [m1]
-                        new_scores = party_scores[:]
-                        new_scores[i] = compute_party_score(new_i_members)
-                        new_scores[j] = compute_party_score(new_j_members)
-                        new_std = get_std(new_scores)
-                        if new_std < best_std - 1e-3:  # 유의미하게 줄어들면
-                            best_std = new_std
-                            best_swap = (i, j, m1, m2)
-        if best_swap:
-            i, j, m1, m2 = best_swap
-            parties[i]['members'].remove(m1)
-            parties[j]['members'].remove(m2)
-            parties[i]['members'].append(m2)
-            parties[j]['members'].append(m1)
-            parties[i]['adventures'] = set(m['adventure'] for m in parties[i]['members'])
-            parties[j]['adventures'] = set(m['adventure'] for m in parties[j]['members'])
-            improved = True
-
-    
-
-    # leftover 최종 보정 루프
-    prev_leftover_sets = set()
-    change = True
-    while change and leftover:
-        # 반복 leftover 명단이면 루프 종료 (무한루프 방지)
-        leftover_ids = frozenset((c['adventure'], c['chara_name']) for c in leftover)
-        if leftover_ids in prev_leftover_sets:
+                        if len(parties[i]['members']) > 4 or len(parties[j]['members']) > 4: continue
+                        # 시뮬 swap
+                        new_i = [m if m!=m1 else m2 for m in parties[i]['members']]
+                        new_j = [m if m!=m2 else m1 for m in parties[j]['members']]
+                        sc_i = compute_party_score(new_i)
+                        sc_j = compute_party_score(new_j)
+                        cand = party_scores.copy()
+                        cand[i], cand[j] = sc_i, sc_j
+                        new_std = std(cand)
+                        if new_std < best_std:
+                            best_std, best_swap = new_std, (i, j, m1, m2)
+        if not best_swap:
             break
-        prev_leftover_sets.add(leftover_ids)
-        
-        change = False
-        new_leftover = []
-        for char in leftover:
-            inserted = False
-            # 1. 우선 빈 자리가 있는 파티가 있다면 (기존 코드가 처리했다면 패스)
-            # 2. 이미 4명인 파티에도 '내보낼 멤버'와 교환할 수 있다면 swap
-            for pi, party in enumerate(parties):
-                # 4명 꽉찬 파티만 고려
-                if len(party['members']) < 4:
-                    continue
-                if char['adventure'] in party['adventures']:
-                    continue
-                # 버퍼조건: char이 버퍼면, 내보내는 멤버가 버퍼여도 되고 딜러여도 됨(단, 버퍼가 한 명 뿐인 파티에서 버퍼를 내보낼 순 없음)
-                # char이 딜러면, 반드시 내보내는 멤버가 딜러여야 함 (버퍼 한 명밖에 없는 파티에서 버퍼 내보내면 안 되므로)
-                candidate_idx = None
-                min_score = float('inf')
-                for idx, m in enumerate(party['members']):
-                    # 내보내는 멤버가 char과 모험단 겹치면 skip (중복금지)
-                    if m['adventure'] == char['adventure']:
-                        continue
-                    # 버퍼 조건 체크
-                    if char['is_buffer'] == 0 and m['is_buffer'] == 1:
-                        # char이 딜러인데 버퍼를 내보내면 버퍼가 부족할 수 있음
-                        if sum(mem['is_buffer'] for mem in party['members']) == 1:
-                            continue  # 버퍼 1명인 파티에서 버퍼 내보내면 불가
-                    # 가장 점수 낮은 멤버 우선
-                    if m['score'] < min_score:
-                        candidate_idx = idx
-                        min_score = m['score']
-                if candidate_idx is not None:
-                    # 교환 실행
-                    old_member = party['members'][candidate_idx]
-                    party['members'][candidate_idx] = char
-                    party['adventures'] = set(m['adventure'] for m in party['members'])
-                    # leftover 처리
-                    new_leftover.append(old_member)
-                    inserted = True
-                    change = True
-                    break  # char 처리됐으므로 다음 leftover 캐릭터로
-            if not inserted:
-                new_leftover.append(char)
-        leftover = new_leftover
+        i, j, m1, m2 = best_swap
+        parties[i]['members'].remove(m1)
+        parties[i]['members'].append(m2)
+        parties[j]['members'].remove(m2)
+        parties[j]['members'].append(m1)
+        parties[i]['adventures'] = {m['adventure'] for m in parties[i]['members']}
+        parties[j]['adventures'] = {m['adventure'] for m in parties[j]['members']}
 
-
-    # 최종 점수, 표준편차, 범위 계산
+    # 8) 최종 통계
     final_scores = [compute_party_score(p['members']) for p in parties]
     score_range = max(final_scores) - min(final_scores) if final_scores else 0.0
-    std_dev = get_std(final_scores)
-
+    std_dev = std(final_scores)
     return parties, leftover, final_scores, score_range, std_dev
 
 
