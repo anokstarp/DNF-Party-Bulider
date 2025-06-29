@@ -1,3 +1,4 @@
+#scrap_char에서 서버 + 캐릭터 key 받아와서 갱신
 #!/usr/bin/env python3
 import sys
 import subprocess
@@ -51,7 +52,15 @@ def upsert_character(conn, data, server, key):
     """
     # 1) buffCal 마지막 항목의 buffScore 시도 추출
     buff_list  = data.get('buffCal', [])
-    buff_score = buff_list[-1].get('buffScore') if buff_list else None
+    buff_score = None
+    if buff_list:
+        last_buff = buff_list[-1]
+        if 'buffScoreNon' in last_buff:
+            buff_score = last_buff['buffScoreNon']
+        elif '4PBuffScore' in last_buff:
+            buff_score = last_buff['4PBuffScore']
+        elif 'buffScore' in last_buff:
+            buff_score = last_buff['buffScore']
 
     if buff_score:
         score     = buff_score.replace(",", "")
@@ -90,6 +99,60 @@ def upsert_character(conn, data, server, key):
     )
 
     conn.execute(sql)
+    
+import datetime
+
+def upsert_character_history(conn, data, server):
+    """
+    캐릭터 히스토리 테이블에 오늘 날짜에 이미 있으면 UPDATE,
+    하루 이상 차이 나면 새로 INSERT
+    """
+    chara_name = data['name']
+    fame_i     = int(data['fame'])
+    score_n    = int(data['score'])
+    server_s   = server
+
+    # 1. 가장 최근 데이터 찾기 (이름, 서버 동일 + 최신)
+    row = conn.execute(
+        '''
+        SELECT idx, updated_at FROM character_history
+        WHERE server=? AND chara_name=?
+        ORDER BY updated_at DESC
+        LIMIT 1
+        ''',
+        (server_s, chara_name)
+    ).fetchone()
+
+    now = datetime.datetime.now()
+    today_str = now.strftime("%Y-%m-%d")
+
+    if row:
+        # 날짜만 비교 (YYYY-MM-DD)
+        latest_date = row['updated_at'][:10]  # '2024-06-30 12:34:56'[:10] → '2024-06-30'
+        if latest_date == today_str:
+            # 이미 오늘자 있음 → UPDATE (score, fame만 갱신)
+            conn.execute(
+                '''
+                UPDATE character_history
+                   SET fame=?, score=?
+                 WHERE idx=?
+                ''',
+                (fame_i, score_n, row['idx'])
+            )
+            return
+        # else: 1일 이상 차이나면 아래에서 INSERT 진행
+
+    # 오늘 데이터가 없거나, 아예 데이터 없음 → 새 INSERT
+    conn.execute(
+        '''
+        INSERT INTO character_history
+            (server, chara_name, fame, score, updated_at)
+        VALUES (?, ?, ?, ?, ?)
+        ''',
+        (server_s, chara_name, fame_i, score_n, now.strftime("%Y-%m-%d %H:%M:%S"))
+    )
+
+
 
 def fetch_and_update(tuples):
     """
@@ -112,6 +175,7 @@ def fetch_and_update(tuples):
 
             if 'adventure' in data and 'name' in data:
                 upsert_character(conn, data, server, key)
+                #upsert_character_history(conn, data, server)
             else:
                 print(f"-- {server} : {key} 갱신 실패 (응답 형식 오류)")
         except requests.RequestException as e:

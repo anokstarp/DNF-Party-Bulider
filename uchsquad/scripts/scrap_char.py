@@ -1,3 +1,4 @@
+#서버 + 캐릭터 이름 
 #!/usr/bin/env python3
 import sys
 import os

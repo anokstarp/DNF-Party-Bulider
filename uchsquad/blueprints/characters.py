@@ -51,7 +51,7 @@ def show_characters():
             '''
             SELECT
               idx, chara_name, job, fame, score, last_score,
-              nightmare, temple, azure, venus, use_yn,
+              isbuffer, nightmare, temple, azure, venus, use_yn,
               display_order
             FROM user_character
             WHERE adventure = ?
