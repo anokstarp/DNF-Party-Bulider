@@ -104,7 +104,7 @@ def update_score_for_user():
     try:
         # 1) 스크립트 실행
         script_path = os.path.join(current_app.root_path, 'scripts', 'update_score.py')
-        subprocess.run(['python', script_path, adventure], check=True)
+        subprocess.run(['python', script_path, adventure], check=True, encoding='utf-8')
 
         # 2) 실행 성공 시 last_execute 테이블에 기록
         conn = get_db_connection()
@@ -199,7 +199,7 @@ def auto_place():
     is_placing = True
     try:
         script = os.path.join(current_app.root_path, 'scripts', 'auto_place.py')
-        subprocess.run(['python', script, adventure], check=True)
+        subprocess.run(['python', script, adventure], check=True, encoding='utf-8')
     except subprocess.CalledProcessError:
         return redirect(url_for('characters.show_characters',
                                 user_idx=user_idx,

@@ -25,7 +25,7 @@ def load_tuples_from_subprocess(keys):
         return []
 
     cmd = [PYTHON_EXEC, SCRAPE_SCRIPT] + keys
-    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    result = subprocess.run(cmd, capture_output=True, text=True, check=False, encoding='utf-8')
     if result.returncode != 0:
         print(f"스크랩 스크립트 오류 (exit code {result.returncode}):", file=sys.stderr)
         print(result.stderr.strip(), file=sys.stderr)
