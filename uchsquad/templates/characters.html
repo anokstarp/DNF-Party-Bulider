@@ -73,6 +73,14 @@
     <button id="save-btn" type="button" style="display:none;" onclick="submitFlags()">
       확인
     </button>
+	
+	{% if selected_user %}
+	  <span style="margin-left:1rem; color:#666; font-size:0.9rem;">
+          여신전 {{ summary.temple[0] }} ({{ summary.temple[1] }}D, {{ summary.temple[2] }}B)
+           | 애쥬어 {{ summary.azure[0] }} ({{ summary.azure[1] }}D, {{ summary.azure[2] }}B)
+           | 베누스 {{ summary.venus[0] }} ({{ summary.venus[1] }}D, {{ summary.venus[2] }}B)
+      </span>
+	{% endif %}
   </div>
 
   <!-- 3) 체크박스 & 순서 수정 폼 -->
@@ -104,18 +112,26 @@
         {% for c in characters %}
           {% set prev = c.last_score or 0 %}
           {% set delta = c.score - prev %}
-        <tr data-idx="{{ c.idx }}">
+        <tr 
+		  data-idx="{{ c.idx }}"
+		  data-name="{{ c.chara_name }}"
+		  data-server="{{ c.server }}"
+		  data-job="{{ c.job }}"
+		>
           <td>{{ loop.index }}</td>
           <td>{{ c.chara_name }}</td>
           <td>{{ c.job }}</td>
-          <td>{{ "{:,}".format(c.fame) }}</td>
-          <td>
-		    {% if c.isbuffer %}
-			  {{ "{:,}".format(c.score) }}
+          <td class="fame-cell">
+		    <span class="clickable-text">{{ "{:,}".format(c.fame) }}</span>
+		  </td>
+          <td class="score-cell">
+			<span class="clickable-text">
+			{% if c.isbuffer %}
+				{{ "{:,}".format(c.score) }}
 			{% else %}
-			  <span class="score-text">{{ c.score | int | korean }}</span>
-			  <span class="score-raw" style="display:none">{{ c.score }}</span>
+				{{ c.score | int | korean }}
 			{% endif %}
+			</span>
 		  </td>
           <td>
             {% if delta > 0 %}
@@ -139,7 +155,122 @@
         {% endfor %}
       </tbody>
     </table>
+	
+	<!-- 로그용 풀스크린 모달 -->
+	<div id="log-modal-overlay"
+		 style="
+		   display:none;
+		   position:fixed;
+		   top:0; left:0; right:0; bottom:0;
+		   background:rgba(0,0,0,0.5);
+		   z-index:1000;
+		 ">
+	</div>
+
+	<div id="log-modal"
+		 style="
+		   position:fixed;
+		   top:50%; left:50%;
+		   transform:translate(-50%,-50%);
+		   width:80vw; height:80vh;
+		   background:#fff;
+		   border-radius:8px;
+		   box-shadow:0 4px 16px rgba(0,0,0,0.3);
+		   z-index:1001;
+		   display:none;
+           flex-direction:column;
+		 ">
+	  <!-- 헤더 -->
+	  <div id="modal-header"
+		   style="
+			 flex:0 0 auto;
+			 padding:0.5rem 1rem;
+			 border-bottom:1px solid #ddd;
+			 display:flex;
+			 justify-content:space-between;
+			 align-items:center;
+		   ">
+		<strong id="modal-title">캐릭터 로그</strong>
+		<button type="button"
+				id="modal-close"
+				style="
+				  background:none;
+				  border:none;
+				  font-size:1.5rem;
+				  line-height:1;
+				  cursor:pointer;
+				">
+		  &times;
+		</button>
+	  </div>
+	  <!-- 본문(스크롤 영역) -->
+      <div id="modal-body"
+          style="
+            display:flex;             /* 좌우 분할 위한 flex container */
+			flex-direction:row;
+            overflow:hidden;          /* 컬럼 각각이 스크롤하도록 */
+			">
+       <!-- 왼쪽 컬럼 -->
+      <div class="column left"
+		style="
+			flex:2 1 auto;
+            padding:1rem;
+            overflow-y:auto;
+            border-right:1px solid #ddd;
+            white-space:pre-wrap;
+			word-break: break-word;
+		  ">
+         <!-- 왼쪽 텍스트/테이블 등 -->
+		  <table>
+			<thead>
+			  <tr>
+				<th>#</th><th>이름</th><th>직업</th>
+				<th>명성</th><th>점수</th><th>갱신일</th>
+			  </tr>
+			</thead>
+			<tbody>
+			  {% for e in entries %}
+			  <tr>
+				<td>{{ e.idx }}.</td>
+				<td>{{ e.chara_name }}</td>
+				<td>{{ e.job }}</td>
+				<td>
+				  {{ "{:,}".format(e.fame) }}
+				  {% if e.fame_diff is not none %}
+					(<span style="color:{{ 'red' if e.fame_diff>0 else 'blue' }}">
+					  {{ '+' if e.fame_diff>0 else '' }}{{ "{:,}".format(e.fame_diff) }}
+					</span>)
+				  {% endif %}
+				</td>
+				<td>
+				  {{ "{:,}".format(e.score) }}
+				  {% if e.score_diff is not none %}
+					(<span style="color:{{ 'red' if e.score_diff>0 else 'blue' }}">
+					  {{ '+' if e.score_diff>0 else '' }}{{ "{:,}".format(e.score_diff) }}
+					</span>)
+				  {% endif %}
+				</td>
+				<td>{{ e.updated_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+			  </tr>
+			  {% endfor %}
+			</tbody>
+		  </table>
+      </div>
+      <!-- 오른쪽 컬럼 -->
+      <div class="column right"
+		  style="
+            flex:1 1 auto;
+            padding:1rem;
+            overflow-y:auto;
+            white-space:pre-wrap;
+		  ">
+         <!-- 오른쪽 텍스트/테이블 등 -->
+	  </div>
+     </div>
+	</div>
   </form>
+
+
 
   <!-- 4) JS 스크립트 & CSS -->
   <script>
@@ -246,6 +377,113 @@
         body: JSON.stringify({a,b})
       });
     });
+	
+	
+	
+	// 1) 엘리먼트 레퍼런스
+	const overlay   = document.getElementById('log-modal-overlay');
+	const modal     = document.getElementById('log-modal');
+	const bodyArea  = document.querySelector('#modal-body .column.left');
+	const closeBtn  = document.getElementById('modal-close');
+	const tbody     = document.getElementById('char-tbody');
+
+	// 2) 모달 열기 함수
+	function openModal(content) {
+	  bodyArea.innerHTML = content;  // 로그나 여러 줄 텍스트 설정
+	  overlay.style.display = 'block';
+	  modal.style.display   = 'flex';
+	  document.body.style.overflow = 'hidden'; 
+	}
+
+	// 3) 모달 닫기 함수
+	function closeModal() {
+	  overlay.style.display = 'none';
+	  modal.style.display   = 'none';
+	  document.body.style.overflow = '';
+	}
+
+	// 4) 닫기 버튼 클릭
+	closeBtn.addEventListener('click', e => {
+	  e.preventDefault();
+	  e.stopPropagation();
+	  closeModal();
+	});
+
+	// 5) (옵션) ESC 키로도 닫기
+	document.addEventListener('keydown', e => {
+	  if (e.key === 'Escape' && modal.style.display === 'flex') {
+		closeModal();
+	  }
+	});
+
+
+	const historyUrl = '/characters/history';
+	// 6) 점수셀 클릭 시 모달에 로그 띄우기
+	tbody.addEventListener('click', async e => {
+	  const span = e.target.closest('.clickable-text');
+	  if (!span) return;
+	  
+	  const tr = span.closest('tr');
+	  const name   = tr.dataset.name;
+	  const server = tr.dataset.server;
+	  const job    = tr.dataset.job;      // ★ job 가져오기
+	  
+	  const params = new URLSearchParams({
+		chara_name: name,
+		server:     server
+	  });
+	  
+	  // 1) 서버에서 JSON 히스토리 받아오기
+	  const res = await fetch(`${historyUrl}?${params}`);
+	  if (!res.ok) {
+	    console.error('History API error', res.status);
+	    alert('히스토리 데이터를 불러오는 중 오류가 발생했습니다.');
+	    return;
+	  }
+	  const data = await res.json();
+
+	  // 0) 헤더 HTML 먼저 생성
+	  let html = '<table style="margin-top:0;">'
+			   + `<caption style="caption-side: top;
+								  text-align: left;
+								  font-weight: bold;
+								  white-space: nowrap;    /* 줄바꿈 금지 */
+								  margin-bottom: 1rem;">
+				    ${server} &nbsp;-&nbsp; ${name}  (${job})
+				  </caption>`
+			   +  '<table style="margin-top:0.25rem;"><thead>'
+		       +  '<tr><th>#</th><th>명성</th><th>점수</th><th>갱신일</th></tr>'
+		       +  '</thead><tbody>';
+			   
+	  data.forEach((row, i) => {
+		const next = data[i+1] || {};
+		const fameDiff  = next.fame  != null ? row.fame  - next.fame  : null;
+		const scoreDiff = next.score != null ? row.score - next.score : null;
+
+		html += `<tr>
+		  <td>${i+1}.</td>
+		  <td>
+			${row.fame.toLocaleString()}
+			${fameDiff != null
+			  ? `(<span style="color:${fameDiff>0?'red':'blue'}">
+				   ${fameDiff>0?'+':''}${fameDiff.toLocaleString()}
+				 </span>)`
+			  : ''}
+		  </td>
+		  <td>
+			${row.score.toLocaleString()}
+			${scoreDiff != null
+			  ? `(<span style="color:${scoreDiff>0?'red':'blue'}">
+				   ${scoreDiff>0?'+':''}${scoreDiff.toLocaleString()}
+				 </span>)`
+			  : ''}
+		  </td>
+		  <td>${row.updated_at}</td>
+		</tr>`;
+	  });
+	  html += '</tbody></table>';
+	  openModal(html);
+	});
   </script>
 
   <style>
@@ -263,5 +501,31 @@
       background-color: #eef;
       border-color: #99c;
     }
+	
+	/* score-cell, fame-cell 모두 클릭 가능 커서 & 호버 강조 */
+	td.score-cell .clickable-text,
+	td.fame-cell .clickable-text {
+	  cursor: pointer;
+	}
+	td.score-cell .clickable-text:hover,
+	td.fame-cell .clickable-text:hover {
+	  text-decoration: underline;
+	}
+	
+	#modal-body {
+	  display: grid;
+	  grid-template-columns: 2fr 1fr;  /* 좌 2, 우 1 비율 */
+	  gap: 1rem;    
+	}
+	#modal-body > .column {
+	  flex: 1;
+	  padding: 1rem;
+	}
+
+	
+	#modal-body {
+	  column-count: 2;
+	  column-gap: 2rem;
+	}
   </style>
 {% endblock %}

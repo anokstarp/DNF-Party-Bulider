@@ -110,26 +110,41 @@
     <form method="get" action="" style="display:inline;">
       <label for="role-select">유형 선택:</label>
       <select id="role-select" name="role" onchange="this.form.submit()">
+	    <option value="all"  {% if selected=='all'  %}selected{% endif %}>All</option>
         <option value="temple" {% if selected=='temple' %}selected{% endif %}>Temple</option>
         <option value="azure"  {% if selected=='azure'  %}selected{% endif %}>Azure</option>
         <option value="venus"  {% if selected=='venus'  %}selected{% endif %}>Venus</option>
       </select>
     </form>
-	<form method="post" action="" style="display:inline; margin-left:0.5rem;" id="regen-form">
-	  <input type="hidden" name="role" value="{{ selected }}">
-	  <button type="submit" id="regen-btn">파티 재생성</button>
-	</form>
+    {% if selected != 'all' %}
+    <form method="post" action="" style="display:inline; margin-left:0.5rem;" id="regen-form">
+      <input type="hidden" name="role" value="{{ selected }}">
+      <button type="submit" id="regen-btn">파티 재생성</button>
+    </form>
+    {% endif %}
   </div>
 
   {% if parties %}
     <div class="party-wrapper">
-      {% set prefixes = {'temple':'여','azure':'애','venus':'베'} %}
-
+      {% set prefixes = {'temple':'여','azure':'애','venus':'베','all':'전체'} %}
+      {% set cnt = namespace(tem=0, azu=0, ven=0) %}
       <!-- 왼쪽: 파티 목록 -->
       <div class="party-list">
         {% for p in parties %}
-          {% set partyIndex = loop.index %}
-          <table class="border table-auto {% if p.is_completed %}completed{% endif %}" data-id="{{ p.id }}">
+          {% if p.type == 'temple' %}
+            {% set cnt.tem = cnt.tem + 1 %}
+            {% set idx = cnt.tem %}
+          {% elif p.type == 'azure' %}
+            {% set cnt.azu = cnt.azu + 1 %}
+            {% set idx = cnt.azu %}
+          {% else %}
+            {% set cnt.ven = cnt.ven + 1 %}
+            {% set idx = cnt.ven %}
+          {% endif %}
+		  
+          <table class="border table-auto {% if p.is_completed %}completed{% endif %}"
+                 data-id="{{ p.id }}"
+                 data-type="{{ p.type }}">
             <colgroup>
               <col style="width:7ch">
               <col style="width:15ch">
@@ -139,7 +154,7 @@
             </colgroup>
             <thead class="bg-gray-100">
               <tr>
-                <th>{{ prefixes[selected] }}{{ loop.index }}</th>
+                <th>{{ prefixes[p.type] }}{{ idx }}</th>
                 <th>모험단</th>
                 <th>이름(직업)</th>
                 <th>스코어</th>
@@ -243,7 +258,16 @@
       <!-- 오른쪽: 필터 + 남은 캐릭터 -->
       <div class="abandon-list">
         <h3>모험단 필터</h3>
-        <ul id="filter-options" class="filter-options"></ul>
+		<ul id="filter-options" class="filter-options">
+		  {% for adv in adventures %}
+			<li>
+			  <label>
+				<input type="checkbox" class="filter-checkbox" value="{{ adv }}">
+				{{ adv }}
+			  </label>
+			</li>
+		  {% endfor %}
+		</ul>
         <div class="mode-toggle">
           <label><input type="checkbox" id="filter-mode"> 하나라도 일치 (OR 모드)</label><br>
 		  <label><input type="checkbox" id="show-non-participating"> 체크인원 미참여 파티 표시</label><br>
@@ -280,16 +304,19 @@
 <script>
 document.addEventListener('DOMContentLoaded', ()=> {
   //재생성 버튼알람
-  document.getElementById('regen-form').addEventListener('submit', function(e) {
-    if(!confirm('기존 모든 파티 데이터가 삭제되고 새로 생성됩니다.\n정말 재생성 하시겠습니까?')) {
-      e.preventDefault();
-      return;
-    }
-    if(!confirm('정말의 정말로 재생성 하시겠습니까?')) {
-      e.preventDefault();
-      return;
-    }
-  });
+  const regenForm = document.getElementById('regen-form');
+  if (regenForm) {
+    regenForm.addEventListener('submit', function(e) {
+      if(!confirm('기존 모든 파티 데이터가 삭제되고 새로 생성됩니다.\n정말 재생성 하시겠습니까?')) {
+        e.preventDefault();
+        return;
+      }
+      if(!confirm('정말의 정말로 재생성 하시겠습니까?')) {
+        e.preventDefault();
+        return;
+      }
+	});
+  }
 
   // DOM 레퍼런스
   const editBtn    = document.getElementById('edit-members-btn');

@@ -24,6 +24,75 @@ def run_party_generation(role):
 def list_and_generate():
     role = request.values.get('role', 'temple')
 
+
+    # ─── 여기에 all 분기 추가 ─────────────────────────────
+    if role == 'all':
+        # 세 가지 타입을 모두 조회해서 parties 리스트에 합친 뒤 바로 렌더
+        conn = get_db_connection()
+        parties = []
+        for t in ('temple','azure','venus'):
+            rows = conn.execute(
+                "SELECT id, buffer, dealer1, dealer2, dealer3, result, "
+                "       COALESCE(is_completed, 0) AS is_completed "
+                "  FROM party WHERE type = ? ORDER BY id ASC",
+                (t,)
+            ).fetchall()
+            for r in rows:
+                buf = json.loads(r['buffer']) if r['buffer'] else None
+                if buf: buf['isbuffer'] = bool(int(buf.get('isbuffer',0)))
+                dealers = []
+                for key in ('dealer1','dealer2','dealer3'):
+                    raw = r[key]
+                    if raw:
+                        d = json.loads(raw)
+                        d['isbuffer'] = bool(int(d.get('isbuffer',0)))
+                        dealers.append(d)
+                    else:
+                        dealers.append(None)
+                parties.append({
+                    'id':           r['id'],
+                    'buffer':       buf,
+                    'dealers':      dealers,
+                    'result':       r['result'],
+                    'is_completed': bool(int(r['is_completed'])),
+                    'type':         t,   # 템플릿에서 구분용
+                })
+        conn.close()
+
+        # abandonment는 기존처럼 role별로만
+        conn = get_db_connection()
+        ab_rows = conn.execute(
+            "SELECT character FROM abandonment WHERE type = ? ORDER BY id ASC",
+            ('temple',)
+        ).fetchall()
+        abandoned = [json.loads(r['character']) for r in ab_rows]
+        conn.close()
+        
+        
+        # 모험단 이름 세트
+        adv_set = set()
+        for p in parties:
+            # 버퍼
+            if p['buffer']:
+                adv_set.add(p['buffer']['adventure'])
+            # 딜러 전부
+            for d in p['dealers']:
+                if d:
+                    adv_set.add(d['adventure'])
+
+        # 정렬된 리스트로 변환
+        adventures = sorted(adv_set)
+
+        return render_template(
+            'party.html',
+            selected=role,
+            parties=parties,
+            abandoned=abandoned,
+            adventures=adventures
+        )
+    # ────────────────────────────────────────────────────
+
+
     if request.method == 'POST' and not request.form.get('complete_action'):
         # POST가 “재생성” 용도일 때만 파티 생성 스크립트 실행
         try:

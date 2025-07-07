@@ -25,6 +25,11 @@ def show_characters():
     selected_user = None
     characters    = []
     last_exec     = None               # ← 여기에 초기화
+    summary = {
+        'temple': (0, 0, 0),
+        'azure' : (0, 0, 0),
+        'venus' : (0, 0, 0),
+    }
 
     if user_idx:
         selected_user = dict(conn.execute(
@@ -50,7 +55,7 @@ def show_characters():
         characters = [dict(r) for r in conn.execute(
             '''
             SELECT
-              idx, chara_name, job, fame, score, last_score,
+              idx, server, chara_name, job, fame, score, last_score,
               isbuffer, nightmare, temple, azure, venus, use_yn,
               display_order
             FROM user_character
@@ -63,6 +68,7 @@ def show_characters():
             (selected_user['adventure'],)
         ).fetchall()]
 
+        
         # 3) 마지막 갱신 시각 조회
         row2 = conn.execute(
             'SELECT date FROM last_execute '
@@ -71,15 +77,38 @@ def show_characters():
         ).fetchone()
         if row2:
             last_exec = row2['date']
+    
+    
+        # 4) use_yn=1 캐릭터만 골라서 D/B 집계
+        counts = {cat: {'D': 0, 'B': 0} for cat in ('temple','azure','venus')}
+        for r in conn.execute(
+            'SELECT isbuffer, temple, azure, venus '
+            '  FROM user_character '
+            ' WHERE adventure = ? AND use_yn = 1',
+            (selected_user['adventure'],)
+        ).fetchall():
+            buf = r['isbuffer']
+            for cat in counts:
+                if r[cat]:
+                    counts[cat][ buf and 'B' or 'D' ] += 1
 
+        # summary = { 'temple':(total,D,B), … }
+        summary = {
+            cat: (counts[cat]['D']+counts[cat]['B'],
+                  counts[cat]['D'],
+                  counts[cat]['B'])
+            for cat in counts
+        }
+    
     conn.close()
-
+    
     return render_template(
         'characters.html',
         users=users,
         selected_user=selected_user,
         characters=characters,
         last_exec=last_exec,          # now defined
+        summary=summary,
         alert=alert
     )
 
@@ -241,3 +270,46 @@ def swap_order():
     conn.close()
 
     return jsonify({'status':'ok'})
+
+
+
+@characters_bp.route('/history', methods=['GET'])
+def character_history():
+    try:
+        name   = request.args.get('chara_name')
+        server = request.args.get('server')
+        if not name or not server:
+            return jsonify({'error': 'missing parameters'}), 400
+
+        conn = get_db_connection()
+        rows = conn.execute(
+            """
+            SELECT h.fame,
+                   h.score,
+                   h.updated_at,
+                   c.job
+              FROM character_history AS h
+              JOIN user_character AS c
+                ON h.chara_name = c.chara_name
+               AND h.server     = c.server
+             WHERE h.chara_name = ?
+               AND h.server     = ?
+             ORDER BY h.updated_at DESC
+            """,
+            (name, server)
+        ).fetchall()
+        conn.close()
+
+        result = []
+        for r in rows:
+            result.append({
+                'fame':       r['fame'],
+                'score':      r['score'],
+                'updated_at': r['updated_at'],
+                'job':        r['job'],
+            })
+        return jsonify(result)
+    except Exception as e:
+        import traceback
+        print(traceback.format_exc())  # 콘솔에 에러 전체 스택 출력
+        return jsonify({'error': '서버 내부 오류', 'message': str(e)}), 500
