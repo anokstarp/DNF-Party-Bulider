@@ -483,6 +483,7 @@ document.addEventListener('DOMContentLoaded', ()=> {
   // ── 필터/정렬 로직 ──
   const STORAGE_KEY   = 'partyFilterState';
   const optsContainer = document.getElementById('filter-options');
+  optsContainer.innerHTML = '';
   const modeToggle    = document.getElementById('filter-mode');
   const showCompleted = document.getElementById('show-completed');
   const showNonParticipating   = document.getElementById('show-non-participating');

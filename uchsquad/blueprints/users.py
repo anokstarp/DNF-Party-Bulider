@@ -1,16 +1,9 @@
+# blueprints/users.py
 from flask import Blueprint, render_template, request, redirect, url_for, current_app
 import sqlite3
 import os
 
 from db import get_db_connection
-
-users_bp = Blueprint('users', __name__, template_folder='../templates')
-
-# blueprints/users.py
-
-from flask import Blueprint, render_template, request, redirect, url_for, current_app
-import sqlite3
-import os
 
 users_bp = Blueprint('users', __name__, template_folder='../templates')
 
