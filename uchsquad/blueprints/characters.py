@@ -64,7 +64,7 @@ def show_characters():
         characters = [dict(r) for r in conn.execute(
             '''
             SELECT
-              idx, server, chara_name, job, fame, 
+              idx, server, key, chara_name, job, fame, 
               score,
               NULL           AS last_score,   -- placeholder
               isbuffer, nightmare, temple, azure, venus, use_yn,

@@ -90,9 +90,9 @@ def upsert_character(conn, data, server, key):
     # INSERT ... ON CONFLICT ... DO UPDATE
     sql = (
         "INSERT INTO user_character"
-        " (adventure, server, chara_name, job, fame, score, last_score, isbuffer)"
+        " (adventure, server, key, chara_name, job, fame, score, last_score, isbuffer)"
         " VALUES"
-        f" ('{adventure}', '{server_s}', '{chara}', '{job}', {fame_i}, {score_n}, NULL, {isbuf_i})"
+        f" ('{adventure}', '{server_s}', '{key}', '{chara}', '{job}', {fame_i}, {score_n}, NULL, {isbuf_i})"
         " ON CONFLICT(adventure, server, chara_name) DO UPDATE SET"
         # 기존 score 를 last_score 에 복사
         " last_score = user_character.score,"
@@ -101,7 +101,8 @@ def upsert_character(conn, data, server, key):
         # 나머지 컬럼도 갱신
         " job        = excluded.job,"
         " fame       = excluded.fame,"
-        " isbuffer   = excluded.isbuffer;"
+        " isbuffer   = excluded.isbuffer,"
+        " key        = excluded.key;"
     )
 
     conn.execute(sql)
