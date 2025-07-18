@@ -97,7 +97,7 @@
           <th>직업</th>
           <th>명성</th>
           <th>점수</th>
-          <th>변화량</th>
+          <th>주간 변화량</th>
           <th>흉몽</th>
           <th>여신전</th>
           <th>애쥬어</th>
@@ -422,25 +422,34 @@
 	tbody.addEventListener('click', async e => {
 	  const span = e.target.closest('.clickable-text');
 	  if (!span) return;
-	  
-	  const tr = span.closest('tr');
+
+	  const tr     = span.closest('tr');
 	  const name   = tr.dataset.name;
 	  const server = tr.dataset.server;
-	  const job    = tr.dataset.job;      // ★ job 가져오기
-	  
-	  const params = new URLSearchParams({
-		chara_name: name,
-		server:     server
-	  });
-	  
+	  const job    = tr.dataset.job;
+
 	  // 1) 서버에서 JSON 히스토리 받아오기
-	  const res = await fetch(`${historyUrl}?${params}`);
+	  const params = new URLSearchParams({ chara_name: name, server: server });
+	  const res    = await fetch(`/characters/history?${params}`);
 	  if (!res.ok) {
-	    console.error('History API error', res.status);
-	    alert('히스토리 데이터를 불러오는 중 오류가 발생했습니다.');
-	    return;
+		alert('히스토리 데이터를 불러오는 중 오류가 발생했습니다.');
+		return;
 	  }
 	  const data = await res.json();
+
+	  // ── 경계 시각: 지난 주 목요일 오전 6시 계산 ──
+	  const now = new Date();
+	  // JS에서는 일요일=0, 월=1, … 목요일=4
+	  let daysSinceThu = (now.getDay() - 4 + 7) % 7;
+	  let boundary = new Date(
+		now.getFullYear(),
+		now.getMonth(),
+		now.getDate() - daysSinceThu,
+		6, 0, 0
+	  );
+	  // 오늘이 경계 이전이면, 진짜 경계는 일주일 전
+	  if (now < boundary) boundary.setDate(boundary.getDate() - 7);
+	  let highlighted = false;
 
 	  // 0) 헤더 HTML 먼저 생성
 	  let html = '<table style="margin-top:0;">'
@@ -459,8 +468,12 @@
 		const next = data[i+1] || {};
 		const fameDiff  = next.fame  != null ? row.fame  - next.fame  : null;
 		const scoreDiff = next.score != null ? row.score - next.score : null;
+		const rowDate = new Date(row.updated_at);
+		const isReset = !highlighted && rowDate < boundary;
+		highlighted = highlighted || isReset;
 
-		html += `<tr>
+		html += `
+		<tr${isReset ? ' class="reset-record"' : ''}>
 		  <td>${i+1}.</td>
 		  <td>
 			${row.fame.toLocaleString()}
@@ -526,6 +539,12 @@
 	#modal-body {
 	  column-count: 2;
 	  column-gap: 2rem;
+	}
+	
+	.reset-record {
+	  background-color: #ffeb9a !important;      /* 밝고 선명한 옐로우 */
+	  border-left: 3px solid #FFB300; /* 좀 더 진한 노란색 포인트 */
+	  font-weight: bold;              /* 글자도 굵게 */
 	}
   </style>
 {% endblock %}

@@ -32,6 +32,15 @@ def show_characters():
     }
 
     if user_idx:
+        # ── 1) 이번 주 마지막 목요일 06:00 시각 계산 ──
+        from datetime import datetime, timedelta
+        now = datetime.now()
+        # Python: weekday() 월=0…일=6, 목요일=3
+        days_since_thu = (now.weekday() - 3) % 7
+        last_thu = now - timedelta(days=days_since_thu)
+        reset_dt = last_thu.replace(hour=6, minute=0, second=0, microsecond=0)
+        reset_str = reset_dt.strftime('%Y-%m-%d %H:%M:%S')        
+        
         selected_user = dict(conn.execute(
             'SELECT idx, "user" AS name, adventure FROM user_adventure WHERE idx = ?',
             (user_idx,)
@@ -55,7 +64,9 @@ def show_characters():
         characters = [dict(r) for r in conn.execute(
             '''
             SELECT
-              idx, server, chara_name, job, fame, score, last_score,
+              idx, server, chara_name, job, fame, 
+              score,
+              NULL           AS last_score,   -- placeholder
               isbuffer, nightmare, temple, azure, venus, use_yn,
               display_order
             FROM user_character
@@ -67,6 +78,23 @@ def show_characters():
             ''',
             (selected_user['adventure'],)
         ).fetchall()]
+
+
+        # ── 3) character_history 에서 reset 이전의 가장 최신 이력 점수로 last_score 덮어쓰기 ──
+        for c in characters:
+            row = conn.execute(
+                '''
+                SELECT score
+                  FROM character_history
+                 WHERE chara_name = ?
+                   AND server     = ?
+                   AND updated_at < ?
+                 ORDER BY updated_at DESC
+                 LIMIT 1
+                ''',
+                (c['chara_name'], c['server'], reset_str)
+            ).fetchone()
+            c['last_score'] = row['score'] if row else c['score']
 
         
         # 3) 마지막 갱신 시각 조회

@@ -81,9 +81,12 @@ def assign_parties(
         if "name" in c and "chara_name" not in c:
             c["chara_name"] = c["name"]
 
-    total   = len(characters)
+    total = len(characters)
     buffers = [c for c in characters if c['is_buffer']]
     dealers = [c for c in characters if not c['is_buffer']]
+
+    # ----- 각 모험단별 전체 캐릭터 수 계산 -----
+    adv_counts = Counter(c['adventure'] for c in characters)
 
     # 2) 파티 수 결정 (buffer×1+, dealer×3, total×4 기준 floor)
     P = min(len(buffers), total // 4)
@@ -92,18 +95,37 @@ def assign_parties(
         return [], characters[:], [], 0.0, 0.0
 
     # 3) 파티 초기화
-    parties  = [{'members': [], 'adventures': set()} for _ in range(P)]
+    parties = [{'members': [], 'adventures': set()} for _ in range(P)]
     leftover = []
 
-    # 4) 버퍼 1명씩 Round-Robin 배치
-    buffs_sorted = sorted(buffers, key=lambda c: c['score'], reverse=True)
+    # 4) 버퍼 1명씩 Round-Robin 배치 (모험단 인원수 우선 + score 순)
+    buffs_sorted = sorted(
+        buffers,
+        key=lambda c: (adv_counts[c['adventure']], c['score']),
+        reverse=True
+    )
+    # mark main buffers
+    for buf in buffs_sorted:
+        buf['_is_main_buffer'] = False
     for i, buf in enumerate(buffs_sorted[:P]):
+        buf['_is_main_buffer'] = True
         parties[i]['members'].append(buf)
         parties[i]['adventures'].add(buf['adventure'])
     leftover_bufs = buffs_sorted[P:]
 
-    # 5) 딜러 배치
-    dlrs_sorted = sorted(dealers, key=lambda c: c['score'], reverse=True)
+    # mark sub-buffers
+    for buf in leftover_bufs:
+        buf['_is_main_buffer'] = False
+
+    # 5) 딜러 배치 (모험단 인원수 우선 + score 순)
+    # ensure dealers marked as non-main buffers
+    for d in dealers:
+        d['_is_main_buffer'] = False
+    dlrs_sorted = sorted(
+        dealers,
+        key=lambda c: (adv_counts[c['adventure']], c['score']),
+        reverse=True
+    )
     for dlr in dlrs_sorted:
         cands = [p for p in parties
                  if len(p['members']) < 4
@@ -131,12 +153,78 @@ def assign_parties(
                     p['adventures'].add(buf['adventure'])
                     leftover_bufs.remove(buf)
                     break
-    leftover.extend(leftover_bufs)
+    # combine leftovers
+    all_leftovers = leftover + leftover_bufs
+    leftover = []
+
+    # helper for swap eligibility
+    def can_swap(c, m):
+        # main-buffer swaps only with main-buffer
+        if c['is_buffer'] and c.get('_is_main_buffer', False):
+            return m['is_buffer'] and m.get('_is_main_buffer', False)
+        # dealer can swap with dealer or sub-buffer
+        if not c['is_buffer']:
+            return (not m['is_buffer']) or (m['is_buffer'] and not m.get('_is_main_buffer', False))
+        # sub-buffer swaps only with dealer
+        if c['is_buffer'] and not c.get('_is_main_buffer', False):
+            return not m['is_buffer']
+        return False
+
+    # 6.5) 남은 캐릭터를 빈 슬롯에 빈틈 없도록 swap 시도
+    for c in list(all_leftovers):
+        placed = False
+        for p in parties:
+            if len(p['members']) >= 4:
+                continue
+            # 1) 직접 삽입 시도
+            if (c['adventure'] not in p['adventures'] and
+                (not c['is_buffer'] or sum(m['is_buffer'] for m in p['members']) < 2)):
+                p['members'].append(c)
+                p['adventures'].add(c['adventure'])
+                all_leftovers.remove(c)
+                placed = True
+                break
+            # 2) swap 시도
+            for q in parties:
+                if q is p:
+                    continue
+                # c가 q에 들어갈 수 있어야 함
+                if c['adventure'] in q['adventures']:
+                    continue
+                # q로부터 m 선택
+                for m in list(q['members']):
+                    # m은 p에 들어갈 수 있어야 함
+                    if m['adventure'] in p['adventures']:
+                        continue
+                    # 타입 제약
+                    if not can_swap(c, m):
+                        continue
+                    # 버퍼 수 제약
+                    buf_p = sum(mm['is_buffer'] for mm in p['members']) + m['is_buffer']
+                    buf_q = sum(mm['is_buffer'] for mm in q['members']) - m['is_buffer'] + c['is_buffer']
+                    if buf_p < 1 or buf_p > 2 or buf_q < 1 or buf_q > 2:
+                        continue
+                    # swap 수행
+                    q['members'].remove(m)
+                    q['adventures'].remove(m['adventure'])
+                    p['members'].append(m)
+                    p['adventures'].add(m['adventure'])
+                    q['members'].append(c)
+                    q['adventures'].add(c['adventure'])
+                    all_leftovers.remove(c)
+                    placed = True
+                    break
+                if placed:
+                    break
+            if placed:
+                break
+        if not placed:
+            leftover.append(c)
 
     # 7) 편차 줄이기 스왑 (최대 5000회)
     for _ in range(5000):
-        scores    = [compute_party_score(p['members']) for p in parties]
-        curr_std  = stdev(scores) if len(scores) > 1 else 0.0
+        scores = [compute_party_score(p['members']) for p in parties]
+        curr_std = stdev(scores) if len(scores) > 1 else 0.0
         best_swap = None
         for i in range(P):
             for j in range(i+1, P):
@@ -171,11 +259,13 @@ def assign_parties(
 
     # 8) 최종 통계 계산 및 반환
     final_scores = [compute_party_score(p['members']) for p in parties]
-    score_range  = max(final_scores) - min(final_scores)
-    std_dev      = stdev(final_scores) if len(final_scores) > 1 else 0.0
-    party_lists  = [p['members'] for p in parties]
+    score_range = max(final_scores) - min(final_scores)
+    std_dev = stdev(final_scores) if len(final_scores) > 1 else 0.0
+    party_lists = [p['members'] for p in parties]
 
     return party_lists, leftover, final_scores, score_range, std_dev
+
+
 
 # 파티 결과를 DB 포맷으로 변환
 def wrap_create_parties_alternative(buffers, dealers):

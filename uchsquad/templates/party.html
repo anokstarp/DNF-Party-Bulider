@@ -34,7 +34,7 @@
       flex: 1 1 auto;
     }
     .party-list table {
-      width: 65ch;
+      width: 600px;
       table-layout: fixed;
       margin-bottom: 1rem;
     }
@@ -119,8 +119,17 @@
     {% if selected != 'all' %}
     <form method="post" action="" style="display:inline; margin-left:0.5rem;" id="regen-form">
       <input type="hidden" name="role" value="{{ selected }}">
+      <!-- 비밀번호는 JS에서 채워넣습니다 -->
+      <input type="hidden" name="regen_password" id="regen-password-field">
       <button type="submit" id="regen-btn">파티 재생성</button>
     </form>
+    {% endif %}
+    {% if summary %}
+      <span style="margin-left:1rem; color:#666; font-size:0.9rem;">
+        여신전 {{ summary.temple[0] }}명 ({{ summary.temple[1] }}D, {{ summary.temple[2] }}B)
+         | 애쥬어 {{ summary.azure[0] }}명 ({{ summary.azure[1] }}D, {{ summary.azure[2] }}B)
+         | 베누스 {{ summary.venus[0] }}명 ({{ summary.venus[1] }}D, {{ summary.venus[2] }}B)
+      </span>
     {% endif %}
   </div>
 
@@ -146,11 +155,11 @@
                  data-id="{{ p.id }}"
                  data-type="{{ p.type }}">
             <colgroup>
-              <col style="width:7ch">
-              <col style="width:15ch">
-              <col style="width:28ch">
-              <col style="width:15ch">
-              <col style="width:8ch">
+              <col style="width:9px">
+              <col style="width:18px">
+              <col style="width:35px">
+              <col style="width:16px">
+              <col style="width:8px">
             </colgroup>
             <thead class="bg-gray-100">
               <tr>
@@ -306,16 +315,27 @@ document.addEventListener('DOMContentLoaded', ()=> {
   //재생성 버튼알람
   const regenForm = document.getElementById('regen-form');
   if (regenForm) {
-    regenForm.addEventListener('submit', function(e) {
-      if(!confirm('기존 모든 파티 데이터가 삭제되고 새로 생성됩니다.\n정말 재생성 하시겠습니까?')) {
-        e.preventDefault();
-        return;
-      }
-      if(!confirm('정말의 정말로 재생성 하시겠습니까?')) {
-        e.preventDefault();
-        return;
-      }
-	});
+     regenForm.addEventListener('submit', function(e) {
+       e.preventDefault();
+
+       // 1) 패스워드 입력
+       const pwd = prompt('파티 재생성 비밀번호를 입력하세요');
+       if (pwd === null) return;               // 취소
+
+       // 2) 클라이언트 검증
+       if (pwd !== '132456') {
+         alert('비밀번호가 잘못되었습니다.');
+         return;
+       }
+
+       // 3) 정답일 때만 숨겨진 필드에 채우고, 이중 확인
+       document.getElementById('regen-password-field').value = pwd;
+       if (!confirm('기존 모든 파티 데이터가 삭제되고 새로 생성됩니다.\n정말 재생성 하시겠습니까?')) return;
+       if (!confirm('정말의 정말로 재생성 하시겠습니까?')) return;
+
+       // 4) 통과 시 최종 제출
+       regenForm.submit();
+     });
   }
 
   // DOM 레퍼런스

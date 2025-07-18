@@ -175,13 +175,37 @@ def list_and_generate():
         (role,)
     ).fetchall()
     abandoned = [json.loads(r['character']) for r in ab_rows]
+    
+    
+    
+    # ── 각 던전별 전체 캐릭터 / 딜러(D) / 버퍼(B) 집계 ──
+    counts = {cat: {'D': 0, 'B': 0} for cat in ('temple','azure','venus')}
+    # use_yn=1 캐릭터만
+    rows = conn.execute(
+        "SELECT isbuffer, temple, azure, venus FROM user_character WHERE use_yn=1"
+    ).fetchall()
+    for r in rows:
+        buf = bool(r['isbuffer'])
+        for cat in counts:
+            if r[cat]:
+                # isbuffer==1 → buffer('B'), else dealer('D')
+                counts[cat]['B' if buf else 'D'] += 1
+    summary = {
+        cat: (
+            counts[cat]['D'] + counts[cat]['B'],  # total
+            counts[cat]['D'],                     # dealers
+            counts[cat]['B']                      # buffers
+        )
+        for cat in counts
+    }
     conn.close()
 
     return render_template(
         'party.html',
         selected=role,
         parties=parties,
-        abandoned=abandoned
+        abandoned=abandoned,
+        summary=summary
     )
 
 @party_bp.route('/complete', methods=['POST'])
