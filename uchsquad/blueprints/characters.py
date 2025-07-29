@@ -41,10 +41,17 @@ def show_characters():
         reset_dt = last_thu.replace(hour=6, minute=0, second=0, microsecond=0)
         reset_str = reset_dt.strftime('%Y-%m-%d %H:%M:%S')        
         
-        selected_user = dict(conn.execute(
+        row = conn.execute(
             'SELECT idx, "user" AS name, adventure FROM user_adventure WHERE idx = ?',
             (user_idx,)
-        ).fetchone())
+        ).fetchone()
+
+        if row is None:
+            # 원하는 처리: 404, 리다이렉트, 첫 사용자 자동 선택 등
+            return redirect(url_for('characters.show_characters',
+                                    alert='존재하지 않는 유저입니다.'))
+
+        selected_user = dict(row)
 
         # 1) 일단 sort_order가 NULL인 행은 idx 값으로 자동 채워 넣기
         #    (화면에만 보이도록 하고, DB에도 업데이트)
