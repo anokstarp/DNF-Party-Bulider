@@ -209,7 +209,7 @@
 			 justify-content:space-between;
 			 align-items:center;
 		   ">
-		<strong id="modal-title">캐릭터 로그</strong>
+		<strong id="modal-title">캐릭터 로그(도적 로그 아님)</strong>
 		<button type="button"
 				id="modal-close"
 				style="
@@ -412,6 +412,9 @@
 	  overlay.style.display = 'block';
 	  modal.style.display   = 'flex';
 	  document.body.style.overflow = 'hidden'; 
+	  document.querySelectorAll('#modal-body .column').forEach(col => {
+        col.scrollTop = 0;
+      });
 	}
 
 	// 3) 모달 닫기 함수
@@ -479,21 +482,32 @@
 								  white-space: nowrap;    /* 줄바꿈 금지 */
 								  margin-bottom: 1rem;">
 				    ${server} &nbsp;-&nbsp; ${name}  (${job})
+					<label style="margin-left:1rem;">
+                      <input type="checkbox" id="show-zero"> 전체 로그 출력
+                    </label>
 				  </caption>`
-			   +  '<table style="margin-top:0.25rem;"><thead>'
+			   +  '<table id="log-table" style="margin-top:0.25rem;"><thead>'
 		       +  '<tr><th>#</th><th>명성</th><th>점수</th><th>갱신일</th></tr>'
 		       +  '</thead><tbody>';
+			   
 			   
 	  data.forEach((row, i) => {
 		const next = data[i+1] || {};
 		const fameDiff  = next.fame  != null ? row.fame  - next.fame  : null;
+		const fd = fameDiff != null ? fameDiff : '';
 		const scoreDiff = next.score != null ? row.score - next.score : null;
+		const sd = scoreDiff != null ? scoreDiff : '';
 		const rowDate = new Date(row.updated_at);
 		const isReset = !highlighted && rowDate < boundary;
 		highlighted = highlighted || isReset;
 
 		html += `
-		<tr${isReset ? ' class="reset-record"' : ''}>
+		<tr 
+		  data-famediff="${fd}"
+		  data-scorediff="${sd}"
+		  ${i===0 ? 'data-mostrecent="true"' : ''}
+		  ${isReset ? ' class="reset-record"' : ''}
+		>
 		  <td>${i+1}.</td>
 		  <td>
 			${row.fame.toLocaleString()}
@@ -516,6 +530,29 @@
 	  });
 	  html += '</tbody></table>';
 	  openModal(html);
+	  
+      // ── 체크박스 토글 시 fameDiff===0인 행 숨김/표시 및 인덱스 리셋
+      const showZeroChk = document.getElementById('show-zero');
+      const table = document.getElementById('log-table');
+      function filterRows() {
+	    let idx = 1;
+        const rows = table.querySelectorAll('tbody tr');
+        rows.forEach(tr => {
+		  const isMost = tr.dataset.mostrecent === 'true';
+		  const isReset  = tr.classList.contains('reset-record');
+          const fd = tr.dataset.famediff;
+		  const sd = tr.dataset.scorediff;
+          if (!isMost && !isReset && fd === '0' && sd === '0' && !showZeroChk.checked) {
+            tr.style.display = 'none';
+          } else {
+            tr.style.display = '';
+            tr.querySelector('td').textContent = idx + '.';
+            idx++;
+          }
+        });
+      }
+      showZeroChk.addEventListener('change', filterRows);
+      filterRows();
 	});
   </script>
 
