@@ -1,0 +1,299 @@
+/* Styles specific to party.html */
+
+.completed {
+  filter: grayscale(100%) brightness(0.8);
+  opacity: 0.28;
+  background-color: #b0b0b0 !important;
+  color: #666 !important;
+}
+
+.party-wrapper {
+  display: flex;
+  align-items: flex-start;
+  gap: 2rem;
+  width: 100%;
+}
+
+/* 1) 파티 목록을 왼쪽으로 고정 */
+.party-list {
+  flex: 1 1 auto;
+}
+
+/* 2) 중간 네비게이터 (일반 간격) */
+.middle-list {
+  flex: 0 0 40ch;
+  position: sticky;
+  top: 1rem;
+  max-height: calc(100vh - 6rem);
+  overflow-y: auto;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  background: #fafafa;
+}
+.middle-list h3 {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
+  border-bottom: 1px solid #ccc;
+  padding-bottom: 0.25rem;
+}
+
+/* 3) 오른쪽 네비게이터 (일반 간격) */
+.abandon-list {
+  flex: 0 0 40ch;
+  margin-left: auto;
+  position: sticky;
+  top: 1rem;
+  max-height: calc(100vh - 6rem);
+  overflow-y: auto;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  background: #fafafa;
+}
+
+.abandon-list h3 {
+  margin: 0.5rem 0 0.25rem;
+  font-size: 1.1rem;
+  padding-bottom: 0.25rem;
+}
+
+.abandon-list .filter-options {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 1rem;
+}
+
+.abandon-list .filter-options li {
+  margin-bottom: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.abandon-list .filter-options label {
+  display: flex;
+  align-items: center;
+}
+
+.abandon-list .filter-options input {
+  margin-right: 0.25rem;
+}
+
+.abandon-list .mode-toggle {
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+.abandon-list ul.characters {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0;
+}
+
+.abandon-list ul.characters li {
+  margin-bottom: 0.5rem;
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 0.9rem;
+}
+
+/* 액션 버튼을 작게 조정 */
+.party-list button,
+.abandon-list button {
+  padding: 0.10rem 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.2;
+}
+
+.party-list table {
+  width: 600px;
+  table-layout: fixed;
+  margin-bottom: 1rem;
+}
+
+/* 1) 테이블 셀 패딩 줄이기 */
+.party-list table th,
+.party-list table td {
+  padding: 0.3rem 0.5rem;
+}
+
+/* 멤버 편집 버튼 크기 조정 */
+#edit-members-btn {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.2;
+  margin: 0;
+}
+
+/* 합산 점수 행 마지막 열 버튼을 꽉 채우기 */
+.party-list table td:last-child form button {
+  display: inline-block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-size: 0.85rem;
+  line-height: 1.5em;
+}
+
+/* 셀 자체의 여백도 제거 */
+.party-list table td:last-child {
+  padding: 0.2em;
+  text-align: center;
+  vertical-align: middle;
+}
+
+/* 1) 기본: 버튼 숨김 */
+.swap-out-btn,
+.swap-in-btn {
+  visibility: hidden;
+  display: inline-block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-size: 0.85rem;
+  line-height: 1.5em;
+}
+
+.party-list table td.swap-col {
+  padding: 0.2em;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.swap-col {
+  padding: 0;
+}
+
+/* .editing 클래스가 body나 wrapper에 있을 때만 보이게 */
+.editing .swap-out-btn,
+.editing .swap-in-btn {
+  visibility: visible;
+}
+
+/* 중간 네비게이터 헤더: 제목과 버튼 플렉스 배치 */
+.middle-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.middle-list-header h3 {
+  margin: 0;
+  padding-bottom: 0.25rem;
+  border-bottom: 2px solid #666;
+}
+
+.middle-list-header button {
+  padding: 0.2rem 0.5rem;
+  font-size: 0.85rem;
+  line-height: 1;
+  margin-left: 1rem;
+}
+
+body.editing #edit-members-btn {
+  display: none;
+}
+
+body.editing #swap-ui {
+  border-top: none !important;
+  margin-top: 0.1rem;
+  padding-top: 0.1rem;
+}
+
+#confirm-swap-btn,
+#cancel-swap-btn {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.8rem;
+  line-height: 1;
+  margin: 0 0.25rem;
+  height: auto;
+  display: inline-block;
+}
+
+/* 선택된 행 강조 */
+.selected-row {
+  background-color: #e6f4ff !important;
+}
+
+/* OUT 버튼이 눌린 상태 스타일 */
+.swap-out-btn.selected {
+  background-color: #007bff;
+  color: white;
+}
+
+/* IN 버튼 스타일 */
+.swap-in-btn {
+  margin-left: 0.5rem;
+  padding: 0.15rem 0.4rem;
+  font-size: 0.8rem;
+}
+
+/* 카드 컨테이너 */
+.character-card {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0.75rem;
+  position: relative;
+  margin-top: 0.2rem;
+  margin-bottom: 0.2rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+}
+
+/* 카드 상단: 모험단 · 이름(직업) · 스코어 */
+.character-card .card-top {
+  margin-bottom: 0.25rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.character-card .card-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  white-space: nowrap;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: #555;
+}
+
+.character-card .card-bottom span {
+  flex: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  align-items: center;
+}
+
+.character-card .card-bottom button.swap-in-btn {
+  flex: none !important;
+  width: auto !important;
+  min-width: 0 !important;
+  padding: 0.05rem 1rem;
+  margin-left: auto;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+#swap-ui {
+  display: none;
+  margin-top: 0.5rem;
+  border-top: 1px solid #ccc;
+  padding-top: 0.5rem;
+}
+
+/* Utility classes */
+.mb-1 { margin-bottom: 1rem; }
+.inline-form { display: inline; }
+.ml-05 { margin-left: 0.5rem; }
+.summary-note { margin-left: 1rem; color: #666; font-size: 0.9rem; }
+.hidden { display: none; }
+.my-05 { margin: 0.5rem 0; }
+.mt-1 { margin-top: 1rem; }
+.text-right { text-align: right; }
