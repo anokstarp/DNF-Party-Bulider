@@ -1,4 +1,7 @@
 {% extends 'base.html' %}
+{% block styles %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='characters.css') }}">
+{% endblock %}
 {% block content %}
 	{% if alert %}
 	  <script>
@@ -15,10 +18,10 @@
   <h2>캐릭터 리스트</h2>
 
   <!-- 1) 유저 선택 & 전체 갱신 -->
-  <div style="margin-bottom:1rem;">
+  <div class="mb-1">
     <form id="select-form"
           action="{{ url_for('characters.show_characters') }}"
-          method="get" style="display:inline;">
+          method="get" class="inline-form">
       <select name="user_idx"
               onchange="document.getElementById('select-form').submit()">
         <option value="">— 유저 선택 —</option>
@@ -34,7 +37,7 @@
     <form id="update-score-form"
           action="{{ url_for('characters.update_score_for_user') }}"
           method="post"
-          style="display:inline; margin-left:0.5rem;">
+          class="inline-form ml-05">
       <input type="hidden" name="user_idx"   value="{{ selected_user.idx  if selected_user }}">
       <input type="hidden" name="adventure"  value="{{ selected_user.adventure if selected_user }}">
       <button id="update-btn" type="button" onclick="submitUpdateScore()">
@@ -43,18 +46,18 @@
     </form>
 
     {% if last_exec %}
-      <span style="margin-left:1rem; color:#666; font-size:0.9rem;">
+      <span class="summary-note">
         마지막 갱신: {{ last_exec }}
       </span>
     {% endif %}
   </div>
 
   <!-- 2) 자동배치, 순서수정, 역할수정/확인 버튼 -->
-  <div style="margin-bottom:0.5rem;">
+  <div class="mb-05">
     <form id="auto-place-form"
           action="{{ url_for('characters.auto_place') }}"
           method="post"
-          style="display:inline; margin-right:0.5rem;">
+          class="inline-form mr-05">
       <input type="hidden" name="user_idx"   value="{{ selected_user.idx  if selected_user }}">
       <input type="hidden" name="adventure"  value="{{ selected_user.adventure if selected_user }}">
       <button id="auto-btn" type="button" onclick="submitAutoPlace()">
@@ -70,12 +73,12 @@
       역할수정
     </button>
 
-    <button id="save-btn" type="button" style="display:none;" onclick="submitFlags()">
+    <button id="save-btn" type="button" class="hidden" onclick="submitFlags()">
       확인
     </button>
 	
 	{% if selected_user %}
-	  <span style="margin-left:1rem; color:#666; font-size:0.9rem;">
+          <span class="summary-note">
           여신전 {{ summary.temple[0] }} ({{ summary.temple[1] }}D, {{ summary.temple[2] }}B)
            | 애쥬어 {{ summary.azure[0] }} ({{ summary.azure[1] }}D, {{ summary.azure[2] }}B)
            | 베누스 {{ summary.venus[0] }} ({{ summary.venus[1] }}D, {{ summary.venus[2] }}B)
@@ -103,7 +106,7 @@
           <th>애쥬어</th>
           <th>베누스</th>
           <th>활성화</th>
-          <th class="order-col" style="display:none; text-align:center;">
+          <th class="order-col hidden">
             순서
           </th>
         </tr>
@@ -124,7 +127,7 @@
 				<a class="char-link clickable-text no-underline"
 				   href="https://dundam.xyz/character?server={{ c.server }}&key={{ c.key }}"
 				   target="_blank"
-				   style="color: inherit; text-decoration: none;">
+                                   class="char-link clickable-text no-underline">
 			    {{ c.chara_name }}
 			    <svg xmlns="http://www.w3.org/2000/svg"
 				     style="width:0.78em;height:0.78em;vertical-align:-0.2em;margin-left:-2px;opacity:0.6;"
@@ -134,7 +137,7 @@
 			    </svg>
 			  </a>
 		    {% else %}
-			  <span class="char-link clickable-text" style="color:#aaa; cursor:not-allowed;">
+                          <span class="char-link clickable-text link-disabled">
 			    {{ c.chara_name }}
 			  </span>
 		    {% endif %}
@@ -154,9 +157,9 @@
 		  </td>
           <td>
             {% if delta > 0 %}
-              <span style="color:red;">+{{ "{:,}".format(delta) }}</span>
+              <span class="delta-positive">+{{ "{:,}".format(delta) }}</span>
             {% elif delta < 0 %}
-              <span style="color:blue;">{{ "{:,}".format(delta) }}</span>
+              <span class="delta-negative">{{ "{:,}".format(delta) }}</span>
             {% else %}
               0
             {% endif %}
@@ -166,7 +169,7 @@
           <td><input type="checkbox" name="azure_{{c.idx}}"     disabled {% if c.azure     %}checked{% endif %}></td>
           <td><input type="checkbox" name="venus_{{c.idx}}"     disabled {% if c.venus     %}checked{% endif %}></td>
           <td><input type="checkbox" name="use_yn_{{c.idx}}"    disabled {% if c.use_yn    %}checked{% endif %}></td>
-          <td class="order-col" style="display:none;">
+          <td class="order-col hidden">
             <button type="button" class="btn-up">↑</button>
             <button type="button" class="btn-down">↓</button>
           </td>
@@ -255,19 +258,19 @@
 				<td>{{ e.job }}</td>
 				<td>
 				  {{ "{:,}".format(e.fame) }}
-				  {% if e.fame_diff is not none %}
-					(<span style="color:{{ 'red' if e.fame_diff>0 else 'blue' }}">
-					  {{ '+' if e.fame_diff>0 else '' }}{{ "{:,}".format(e.fame_diff) }}
-					</span>)
-				  {% endif %}
+                                  {% if e.fame_diff is not none %}
+                                        (<span class="{{ 'delta-positive' if e.fame_diff>0 else 'delta-negative' }}">
+                                          {{ '+' if e.fame_diff>0 else '' }}{{ "{:,}".format(e.fame_diff) }}
+                                        </span>)
+                                  {% endif %}
 				</td>
 				<td>
 				  {{ "{:,}".format(e.score) }}
-				  {% if e.score_diff is not none %}
-					(<span style="color:{{ 'red' if e.score_diff>0 else 'blue' }}">
-					  {{ '+' if e.score_diff>0 else '' }}{{ "{:,}".format(e.score_diff) }}
-					</span>)
-				  {% endif %}
+                                  {% if e.score_diff is not none %}
+                                        (<span class="{{ 'delta-positive' if e.score_diff>0 else 'delta-negative' }}">
+                                          {{ '+' if e.score_diff>0 else '' }}{{ "{:,}".format(e.score_diff) }}
+                                        </span>)
+                                  {% endif %}
 				</td>
 				<td>{{ e.updated_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
 			  </tr>
@@ -556,52 +559,4 @@
 	});
   </script>
 
-  <style>
-    /* 버튼 간격 아주 조금만 */
-    #order-btn,
-    #edit-btn,
-    #save-btn {
-      margin-right: 4px;
-    }
-    #save-btn {
-      margin-right: 0;
-    }
-    /* 선택된 모드 강조용 (선택사항) */
-    .active {
-      background-color: #eef;
-      border-color: #99c;
-    }
-	
-	/* score-cell, fame-cell 모두 클릭 가능 커서 & 호버 강조 */
-	td.score-cell .clickable-text,
-	td.fame-cell .clickable-text {
-	  cursor: pointer;
-	}
-	td.score-cell .clickable-text:hover,
-	td.fame-cell .clickable-text:hover {
-	  text-decoration: underline;
-	}
-	
-	#modal-body {
-	  display: grid;
-	  grid-template-columns: 2fr 1fr;  /* 좌 2, 우 1 비율 */
-	  gap: 1rem;    
-	}
-	#modal-body > .column {
-	  flex: 1;
-	  padding: 1rem;
-	}
-
-	
-	#modal-body {
-	  column-count: 2;
-	  column-gap: 2rem;
-	}
-	
-	.reset-record {
-	  background-color: #ffeb9a !important;      /* 밝고 선명한 옐로우 */
-	  border-left: 3px solid #FFB300; /* 좀 더 진한 노란색 포인트 */
-	  font-weight: bold;              /* 글자도 굵게 */
-	}
-  </style>
 {% endblock %}

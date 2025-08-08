@@ -1,0 +1,58 @@
+/* Styles specific to characters.html */
+
+#order-btn,
+#edit-btn,
+#save-btn {
+  margin-right: 4px;
+}
+#save-btn {
+  margin-right: 0;
+}
+
+.active {
+  background-color: #eef;
+  border-color: #99c;
+}
+
+td.score-cell .clickable-text,
+td.fame-cell .clickable-text {
+  cursor: pointer;
+}
+
+td.score-cell .clickable-text:hover,
+td.fame-cell .clickable-text:hover {
+  text-decoration: underline;
+}
+
+#modal-body {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1rem;
+  column-count: 2;
+  column-gap: 2rem;
+}
+
+#modal-body > .column {
+  flex: 1;
+  padding: 1rem;
+}
+
+.reset-record {
+  background-color: #ffeb9a !important;
+  border-left: 3px solid #FFB300;
+  font-weight: bold;
+}
+
+/* Utility classes */
+.mb-1 { margin-bottom: 1rem; }
+.mb-05 { margin-bottom: 0.5rem; }
+.inline-form { display: inline; }
+.ml-05 { margin-left: 0.5rem; }
+.mr-05 { margin-right: 0.5rem; }
+.summary-note { margin-left: 1rem; color: #666; font-size: 0.9rem; }
+.hidden { display: none; }
+.delta-positive { color: red; }
+.delta-negative { color: blue; }
+.no-underline { color: inherit; text-decoration: none; }
+.link-disabled { color: #aaa; cursor: not-allowed; }
+.order-col { text-align: center; }

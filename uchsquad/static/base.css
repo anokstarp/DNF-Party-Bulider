@@ -1,0 +1,194 @@
+/* static/style.css */
+
+/* — 기본 레이아웃 — */
+body {
+  font-family: sans-serif;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 1rem;
+  line-height: 1.6;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+nav {
+  margin-top: 0.5rem;
+}
+
+nav a {
+  margin: 0 0.5rem;
+  text-decoration: none;
+  color: #007bff;
+}
+
+/* — 탭 스타일 — */
+.tabs {
+  display: flex;
+  border-bottom: 1px solid #ccc;
+  margin-bottom: 1rem;
+}
+
+.tabs button {
+  padding: 0.5rem 1rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.tabs button.active {
+  border-bottom: 2px solid #007bff;
+  font-weight: bold;
+}
+
+/* — 폼 요소 — */
+select {
+  padding: 0.4rem 0.6rem;
+  font-size: 0.9rem;
+}
+
+button {
+  padding: 0.4rem 0.8rem;
+  font-size: 1rem;
+  line-height: 1.2;
+  cursor: pointer;
+  margin-right: 0.25rem; /* 버튼 간격 */
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* — 테이블 스타일 — */
+.table, table {
+  width: auto;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  margin-top: 1rem;
+}
+
+th, td {
+  border: 1px solid #ddd;
+  padding: 0.4rem 0.8rem;
+  text-align: left;
+  white-space: nowrap;
+}
+
+thead th {
+  background-color: #f0f0f0;
+  border-bottom: 2px solid #666;
+}
+
+tbody tr:nth-child(odd) {
+  background-color: #fafafa;
+}
+
+/* 중첩 테이블 */
+.nested-table td {
+  border: none;
+  padding: 0.2rem;
+}
+
+/* 문단 스타일 */
+p {
+  margin-top: 1rem;
+  font-size: 0.9rem;
+}
+
+/* 체크박스 중앙 정렬 */
+table td input[type="checkbox"] {
+  display: block;
+  margin: 0 auto;
+}
+
+/* 화살표 버튼 (순서 수정) */
+.order-col .btn-up,
+.order-col .btn-down {
+  display: inline-block;
+  flex: 1;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.2rem 0;
+  font-size: 0.8rem;
+  text-align: center;
+  line-height: 1;
+}
+
+/* — 반응형: 해상도별 미디어 쿼리 — */
+
+/* 대형 데스크톱 (1920px 이상) */
+@media (min-width: 1920px) {
+  body {
+    max-width: 1600px;
+    padding: 2rem;
+  }
+  button {
+    padding: 0.6rem 1rem;
+    font-size: 1.125rem;
+    margin-right: 0.5rem;
+  }
+  select {
+    padding: 0.6rem;
+    font-size: 1.125rem;
+  }
+  table {
+    font-size: 1rem;
+  }
+}
+
+/* 일반 데스크톱·태블릿 (1024px ~ 1919px) */
+@media (min-width: 1024px) and (max-width: 1919px) {
+  body {
+    max-width: 1000px;
+    padding: 1rem;
+  }
+  button {
+    padding: 0.5rem 0.9rem;
+    font-size: 1rem;
+    margin-right: 0.4rem;
+  }
+  select {
+    padding: 0.5rem;
+    font-size: 1rem;
+  }
+  table {
+    font-size: 0.95rem;
+  }
+}
+
+/* 모바일 (768px 이하) */
+@media (max-width: 768px) {
+  body {
+    padding: 0.5rem;
+  }
+  button {
+    display: block;
+    width: 100%;
+    margin: 0.5rem 0;
+    font-size: 1rem;
+    padding: 0.75rem;
+    margin-right: 0;
+  }
+  select {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+  table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    font-size: 0.9rem;
+  }
+  .order-col {
+    /* JS로 토글 시 display 처리 */
+  }
+}
+
+/* 체크박스 크기 키우기 (transform 방식) */
+input[type="checkbox"] {
+  transform: scale(1.5);
+  margin: 0.25rem;
+}

@@ -1,5 +1,8 @@
 <!-- templates/users.html -->
 {% extends 'base.html' %}
+{% block styles %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='users.css') }}">
+{% endblock %}
 {% block content %}
 
 {% if alert %}
@@ -23,7 +26,7 @@
       <td>{{ u.name }}</td>
       <td>{{ u.adventure }}</td>
       <td>
-        <form action="{{ url_for('users.delete_user') }}" method="post" style="display:inline;">
+        <form action="{{ url_for('users.delete_user') }}" method="post" class="inline-form">
           <input type="hidden" name="idx" value="{{ u.idx }}">
           <button type="submit">삭제</button>
         </form>
