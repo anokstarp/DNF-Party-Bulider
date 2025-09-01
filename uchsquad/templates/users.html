@@ -15,7 +15,7 @@
 <form action="{{ url_for('users.add_user') }}" method="post">
   <input type="text" name="name" placeholder="유저 이름" required>
   <input type="text" name="adventure" placeholder="모험단 이름" required>
-  <button type="submit">추가</button>
+  <button type="submit" style="padding:4px 4px; font-size: 0.9rem;">추가</button>
 </form>
 
 <table>
@@ -28,7 +28,7 @@
       <td>
         <form action="{{ url_for('users.delete_user') }}" method="post" class="inline-form">
           <input type="hidden" name="idx" value="{{ u.idx }}">
-          <button type="submit">삭제</button>
+          <button type="submit" style="padding:4px 6px; font-size: 0.9rem;">삭제</button>
         </form>
       </td>
     </tr>

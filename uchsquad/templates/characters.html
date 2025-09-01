@@ -23,7 +23,8 @@
           action="{{ url_for('characters.show_characters') }}"
           method="get" class="inline-form">
       <select name="user_idx"
-              onchange="document.getElementById('select-form').submit()">
+              onchange="document.getElementById('select-form').submit()"
+			  style="padding:4px 4px; font-size: 0.9rem;">
         <option value="">— 유저 선택 —</option>
         {% for u in users %}
           <option value="{{ u.idx }}"
@@ -40,7 +41,7 @@
           class="inline-form ml-05">
       <input type="hidden" name="user_idx"   value="{{ selected_user.idx  if selected_user }}">
       <input type="hidden" name="adventure"  value="{{ selected_user.adventure if selected_user }}">
-      <button id="update-btn" type="button" onclick="submitUpdateScore()">
+      <button id="update-btn" type="button" onclick="submitUpdateScore()" style="padding:4px 4px; font-size: 0.9rem;">
         전체 갱신
       </button>
     </form>
@@ -60,20 +61,20 @@
           class="inline-form mr-05">
       <input type="hidden" name="user_idx"   value="{{ selected_user.idx  if selected_user }}">
       <input type="hidden" name="adventure"  value="{{ selected_user.adventure if selected_user }}">
-      <button id="auto-btn" type="button" onclick="submitAutoPlace()">
+      <button id="auto-btn" type="button" onclick="submitAutoPlace() " style="padding:4px 4px; font-size: 0.9rem;">
         자동배치
       </button>
     </form>
 
-    <button id="order-btn" type="button" onclick="toggleOrderMode()">
+    <button id="order-btn" type="button" onclick="toggleOrderMode()" style="padding:4px 4px; font-size: 0.9rem;">
       순서수정
     </button>
 
-    <button id="edit-btn" type="button" onclick="toggleEdit()">
+    <button id="edit-btn" type="button" onclick="toggleEdit()"style="padding:4px 4px; font-size: 0.9rem;">
       역할수정
     </button>
 
-    <button id="save-btn" type="button" class="hidden" onclick="submitFlags()">
+    <button id="save-btn" type="button" class="hidden" onclick="submitFlags()" style="padding:4px 4px; font-size: 0.9rem;">
       확인
     </button>
 

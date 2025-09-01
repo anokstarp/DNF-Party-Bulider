@@ -18,34 +18,55 @@
     {% endif %}
   {% endwith %}
 
-  <div class="mb-1">
-    <form method="get" action="" class="inline-form">
-      <label for="role-select">유형 선택:</label>
-      <select id="role-select" name="role" onchange="this.form.submit()">
-            <option value="all"  {% if selected=='all'  %}selected{% endif %}>All</option>
-        <option value="temple" {% if selected=='temple' %}selected{% endif %}>Temple</option>
-        <option value="azure"  {% if selected=='azure'  %}selected{% endif %}>Azure</option>
-        <option value="venus"  {% if selected=='venus'  %}selected{% endif %}>Venus</option>
-        <option value="tmp"    {% if selected=='tmp'    %}selected{% endif %}>임시</option>
-      </select>
-    </form>
-    {% if selected != 'all' %}
-    <form method="post" action="" class="inline-form ml-05" id="regen-form">
-      <input type="hidden" name="role" value="{{ selected }}">
-      <!-- 비밀번호는 JS에서 채워넣습니다 -->
-      <input type="hidden" name="regen_password" id="regen-password-field">
-      <button type="submit" id="regen-btn">파티 재생성</button>
-    </form>
-    {% endif %}
-    {% if summary %}
-      <span class="summary-note">
-        여신전 {{ summary.temple[0] }}명 ({{ summary.temple[1] }}D, {{ summary.temple[2] }}B)
-         | 애쥬어 {{ summary.azure[0] }}명 ({{ summary.azure[1] }}D, {{ summary.azure[2] }}B)
-         | 베누스 {{ summary.venus[0] }}명 ({{ summary.venus[1] }}D, {{ summary.venus[2] }}B)
-         | 임시 {{ summary.tmp[0] }}명 ({{ summary.tmp[1] }}D, {{ summary.tmp[2] }}B)
-      </span>
-    {% endif %}
-  </div>
+	<div class="mb-1">
+	  <form method="get" action="" class="inline-form">
+		<label for="role-select">유형 선택:</label>
+		<select id="role-select" name="role" onchange="this.form.submit()" style="padding:4px 4px; font-size: 0.9rem;">
+		  <option value="all"    {% if selected=='all'    %}selected{% endif %}>All</option>
+		  <option value="temple" {% if selected=='temple' %}selected{% endif %}>여신전</option>
+		  <option value="azure"  {% if selected=='azure'  %}selected{% endif %}>애쥬어</option>
+		  <option value="venus"  {% if selected=='venus'  %}selected{% endif %}>베누스</option>
+		  <option value="tmp"    {% if selected=='tmp'    %}selected{% endif %}>임시</option>
+		</select>
+	  </form>
+
+	  {% if selected != 'all' %}
+	  <form method="post" action="" class="inline-form ml-05" id="regen-form">
+		<input type="hidden" name="role" value="{{ selected }}">
+		<!-- 비밀번호는 JS에서 채워넣습니다 -->
+		<input type="hidden" name="regen_password" id="regen-password-field">
+		<button type="submit" id="regen-btn" style="padding:4px 4px; font-size: 0.9rem;">파티 재생성</button>
+	  </form>
+	  {% endif %}
+
+	  {# ▶ 완료/미완료 카운트 계산 (all이면 dict 합치기) #}
+	  {% if selected == 'all' and parties is mapping %}
+		{% set all_list = [] %}
+		{% for lst in parties.values() %}
+		  {% set all_list = all_list + lst %}
+		{% endfor %}
+	  {% else %}
+		{% set all_list = parties %}
+	  {% endif %}
+
+	  {% set total_parties = all_list|length %}
+	  {% set completed = all_list|selectattr('is_completed')|list|length %}
+	  {% set pending = total_parties - completed %}
+
+	  <span id="party-counts" class="ml-05">
+		미완료 {{ pending }}개 · 완료 {{ completed }}개
+	  </span>
+
+	  {% if summary %}
+		<span class="summary-note">
+		  여신전 {{ summary.temple[0] }}명 ({{ summary.temple[1] }}D, {{ summary.temple[2] }}B)
+		   | 애쥬어 {{ summary.azure[0] }}명 ({{ summary.azure[1] }}D, {{ summary.azure[2] }}B)
+		   | 베누스 {{ summary.venus[0] }}명 ({{ summary.venus[1] }}D, {{ summary.venus[2] }}B)
+		   | 임시 {{ summary.tmp[0] }}명 ({{ summary.tmp[1] }}D, {{ summary.tmp[2] }}B)
+		</span>
+	  {% endif %}
+	</div>
+
 
   {% if parties %}
     <div class="party-wrapper">
