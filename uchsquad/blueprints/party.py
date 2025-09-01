@@ -168,6 +168,7 @@ def list_and_generate():
             'dealers': dealers,
             'result': r['result'],
             'is_completed': bool(int(r['is_completed'])),
+            'type': role,
         })
 
     ab_rows = conn.execute(
@@ -179,10 +180,10 @@ def list_and_generate():
     
     
     # ── 각 던전별 전체 캐릭터 / 딜러(D) / 버퍼(B) 집계 ──
-    counts = {cat: {'D': 0, 'B': 0} for cat in ('temple','azure','venus')}
+    counts = {cat: {'D': 0, 'B': 0} for cat in ('temple','azure','venus','tmp')}
     # use_yn=1 캐릭터만
     rows = conn.execute(
-        "SELECT isbuffer, temple, azure, venus FROM user_character WHERE use_yn=1"
+        "SELECT isbuffer, temple, azure, venus, tmp FROM user_character WHERE use_yn=1"
     ).fetchall()
     for r in rows:
         buf = bool(r['isbuffer'])

@@ -29,6 +29,7 @@ def show_characters():
         'temple': (0, 0, 0),
         'azure' : (0, 0, 0),
         'venus' : (0, 0, 0),
+        'tmp'   : (0, 0, 0),
     }
 
     if user_idx:
@@ -71,10 +72,10 @@ def show_characters():
         characters = [dict(r) for r in conn.execute(
             '''
             SELECT
-              idx, server, key, chara_name, job, fame, 
+              idx, server, key, chara_name, job, fame,
               score,
               NULL           AS last_score,   -- placeholder
-              isbuffer, nightmare, temple, azure, venus, use_yn,
+              isbuffer, nightmare, temple, azure, venus, tmp, use_yn,
               display_order
             FROM user_character
             WHERE adventure = ?
@@ -115,9 +116,9 @@ def show_characters():
     
     
         # 4) use_yn=1 캐릭터만 골라서 D/B 집계
-        counts = {cat: {'D': 0, 'B': 0} for cat in ('temple','azure','venus')}
+        counts = {cat: {'D': 0, 'B': 0} for cat in ('temple','azure','venus','tmp')}
         for r in conn.execute(
-            'SELECT isbuffer, temple, azure, venus '
+            'SELECT isbuffer, temple, azure, venus, tmp '
             '  FROM user_character '
             ' WHERE adventure = ? AND use_yn = 1',
             (selected_user['adventure'],)
@@ -220,6 +221,7 @@ def update_flags():
         temple    = 1 if request.form.get(f'temple_{idx}')     else 0
         azure     = 1 if request.form.get(f'azure_{idx}')      else 0
         venus     = 1 if request.form.get(f'venus_{idx}')      else 0
+        tmp       = 1 if request.form.get(f'tmp_{idx}')        else 0
         use_yn    = 1 if request.form.get(f'use_yn_{idx}')     else 0
 
         conn.execute(
@@ -229,10 +231,11 @@ def update_flags():
                    temple    = ?,
                    azure     = ?,
                    venus     = ?,
+                   tmp       = ?,
                    use_yn    = ?
              WHERE idx = ?
             ''',
-            (nightmare, temple, azure, venus, use_yn, idx)
+            (nightmare, temple, azure, venus, tmp, use_yn, idx)
         )
 
     conn.commit()

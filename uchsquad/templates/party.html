@@ -22,10 +22,11 @@
     <form method="get" action="" class="inline-form">
       <label for="role-select">유형 선택:</label>
       <select id="role-select" name="role" onchange="this.form.submit()">
-	    <option value="all"  {% if selected=='all'  %}selected{% endif %}>All</option>
+            <option value="all"  {% if selected=='all'  %}selected{% endif %}>All</option>
         <option value="temple" {% if selected=='temple' %}selected{% endif %}>Temple</option>
         <option value="azure"  {% if selected=='azure'  %}selected{% endif %}>Azure</option>
         <option value="venus"  {% if selected=='venus'  %}selected{% endif %}>Venus</option>
+        <option value="tmp"    {% if selected=='tmp'    %}selected{% endif %}>임시</option>
       </select>
     </form>
     {% if selected != 'all' %}
@@ -41,14 +42,15 @@
         여신전 {{ summary.temple[0] }}명 ({{ summary.temple[1] }}D, {{ summary.temple[2] }}B)
          | 애쥬어 {{ summary.azure[0] }}명 ({{ summary.azure[1] }}D, {{ summary.azure[2] }}B)
          | 베누스 {{ summary.venus[0] }}명 ({{ summary.venus[1] }}D, {{ summary.venus[2] }}B)
+         | 임시 {{ summary.tmp[0] }}명 ({{ summary.tmp[1] }}D, {{ summary.tmp[2] }}B)
       </span>
     {% endif %}
   </div>
 
   {% if parties %}
     <div class="party-wrapper">
-      {% set prefixes = {'temple':'여','azure':'애','venus':'베','all':'전체'} %}
-      {% set cnt = namespace(tem=0, azu=0, ven=0) %}
+      {% set prefixes = {'temple':'여','azure':'애','venus':'베','tmp':'임','all':'전체'} %}
+      {% set cnt = namespace(tem=0, azu=0, ven=0, tmp=0) %}
       <!-- 왼쪽: 파티 목록 -->
       <div class="party-list">
         {% for p in parties %}
@@ -58,9 +60,12 @@
           {% elif p.type == 'azure' %}
             {% set cnt.azu = cnt.azu + 1 %}
             {% set idx = cnt.azu %}
-          {% else %}
+          {% elif p.type == 'venus' %}
             {% set cnt.ven = cnt.ven + 1 %}
             {% set idx = cnt.ven %}
+          {% elif p.type == 'tmp' %}
+            {% set cnt.tmp = cnt.tmp + 1 %}
+            {% set idx = cnt.tmp %}
           {% endif %}
 		  
           <table class="border table-auto {% if p.is_completed %}completed{% endif %}"
