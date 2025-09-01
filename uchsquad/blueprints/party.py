@@ -168,6 +168,7 @@ def list_and_generate():
             'dealers': dealers,
             'result': r['result'],
             'is_completed': bool(int(r['is_completed'])),
+            'type': role,
         })
 
     ab_rows = conn.execute(
