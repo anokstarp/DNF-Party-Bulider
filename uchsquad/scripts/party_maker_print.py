@@ -20,22 +20,22 @@ def load_characters(db_path, role=None):
     conn = sqlite3.connect(db_path)
 
     buf_query = '''
-        SELECT adventure, chara_name, job, fame, score, isbuffer, temple, azure, venus
+        SELECT adventure, chara_name, job, fame, score, isbuffer, temple, azure, venus, tmp
         FROM user_character
         WHERE use_yn = 1
           AND isbuffer = 1
     '''
-    if role in ('temple', 'azure', 'venus'):
+    if role in ('temple', 'azure', 'venus', 'tmp'):
         buf_query += f" AND {role} = 1"
     buf_df = pd.read_sql_query(buf_query, conn)
 
     del_query = '''
-        SELECT adventure, chara_name, job, fame, score, isbuffer, temple, azure, venus
+        SELECT adventure, chara_name, job, fame, score, isbuffer, temple, azure, venus, tmp
         FROM user_character
         WHERE use_yn = 1
           AND isbuffer = 0
     '''
-    if role in ('temple', 'azure', 'venus'):
+    if role in ('temple', 'azure', 'venus', 'tmp'):
         del_query += f" AND {role} = 1"
     del_df = pd.read_sql_query(del_query, conn)
 
@@ -318,7 +318,7 @@ def wrap_create_parties_alternative(buffers, dealers):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generate parties and insert into DB')
-    parser.add_argument('role', nargs='?', choices=['temple','azure','venus'], default=None)
+    parser.add_argument('role', nargs='?', choices=['temple','azure','venus','tmp'], default=None)
     args = parser.parse_args()
 
     base = os.path.dirname(os.path.abspath(__file__)) + '/..'
