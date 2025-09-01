@@ -7,7 +7,7 @@ from app import get_db_connection  # Flask 앱의 DB 커넥션 사용
 def get_characters(attr: str) -> list[dict]:
     """
     use_yn=1 캐릭터 중에서
-    attr 컬럼(temple/azure/venus)이 1인 캐릭터를
+    attr 컬럼(temple/azure/venus/tmp)이 1인 캐릭터를
     adventure, chara_name, job, score, isbuffer 로 반환
     """
     conn = get_db_connection()

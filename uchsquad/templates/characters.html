@@ -76,14 +76,15 @@
     <button id="save-btn" type="button" class="hidden" onclick="submitFlags()">
       확인
     </button>
-	
-	{% if selected_user %}
+
+        {% if selected_user %}
           <span class="summary-note">
           여신전 {{ summary.temple[0] }} ({{ summary.temple[1] }}D, {{ summary.temple[2] }}B)
            | 애쥬어 {{ summary.azure[0] }} ({{ summary.azure[1] }}D, {{ summary.azure[2] }}B)
            | 베누스 {{ summary.venus[0] }} ({{ summary.venus[1] }}D, {{ summary.venus[2] }}B)
+           | 임시 {{ summary.tmp[0] }} ({{ summary.tmp[1] }}D, {{ summary.tmp[2] }}B)
       </span>
-	{% endif %}
+        {% endif %}
   </div>
 
   <!-- 3) 체크박스 & 순서 수정 폼 -->
@@ -105,6 +106,7 @@
           <th>여신전</th>
           <th>애쥬어</th>
           <th>베누스</th>
+          <th>임시</th>
           <th>활성화</th>
           <th class="order-col hidden">
             순서
@@ -168,6 +170,7 @@
           <td><input type="checkbox" name="temple_{{c.idx}}"    disabled {% if c.temple    %}checked{% endif %}></td>
           <td><input type="checkbox" name="azure_{{c.idx}}"     disabled {% if c.azure     %}checked{% endif %}></td>
           <td><input type="checkbox" name="venus_{{c.idx}}"     disabled {% if c.venus     %}checked{% endif %}></td>
+          <td><input type="checkbox" name="tmp_{{c.idx}}"       disabled {% if c.tmp       %}checked{% endif %}></td>
           <td><input type="checkbox" name="use_yn_{{c.idx}}"    disabled {% if c.use_yn    %}checked{% endif %}></td>
           <td class="order-col hidden">
             <button type="button" class="btn-up">↑</button>

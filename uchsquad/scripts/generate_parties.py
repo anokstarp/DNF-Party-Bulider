@@ -16,7 +16,8 @@ DB_PATH = 'your_database.db'
 TYPE_TABLE_MAP = {
     'temple': 'temple_party',
     'azure': 'azure_party',
-    'venus': 'venus_party'
+    'venus': 'venus_party',
+    'tmp': 'tmp_party'
 }
 
 def get_characters(attr):
@@ -102,7 +103,7 @@ def build_parties(char_list):
 
 def main():
     parser = argparse.ArgumentParser(
-        description='temple/azure/venus 파티를 생성해 DB에 저장하는 스크립트')
+        description='temple/azure/venus/tmp 파티를 생성해 DB에 저장하는 스크립트')
     parser.add_argument('type', choices=list(TYPE_TABLE_MAP.keys()) + ['all'],
                         help='생성할 파티 유형 또는 all')
     args = parser.parse_args()
