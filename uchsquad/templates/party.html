@@ -53,12 +53,12 @@
 	  {% set completed = all_list|selectattr('is_completed')|list|length %}
 	  {% set pending = total_parties - completed %}
 
-	  <span id="party-counts" class="ml-05">
+	  <span id="party-counts" class="ml-05" style="margin-left:0.1rem; margin-bottom:0.25rem;  font-size:0.9rem;">
 		미완료 {{ pending }}개 · 완료 {{ completed }}개
-	  </span>
+	  </span><br>
 
 	  {% if summary %}
-		<span class="summary-note">
+		<span class="summary-note" style="margin-left:0.1rem; margin-bottom:0.25rem;  font-size:0.9rem;">
 		  여신전 {{ summary.temple[0] }}명 ({{ summary.temple[1] }}D, {{ summary.temple[2] }}B)
 		   | 애쥬어 {{ summary.azure[0] }}명 ({{ summary.azure[1] }}D, {{ summary.azure[2] }}B)
 		   | 베누스 {{ summary.venus[0] }}명 ({{ summary.venus[1] }}D, {{ summary.venus[2] }}B)
