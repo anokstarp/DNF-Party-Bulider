@@ -531,6 +531,18 @@ document.addEventListener('DOMContentLoaded', ()=> {
     });
     tables.forEach(tbl => container.appendChild(tbl));
   }
+
+  // 5.5) 화면에 보이는 파티 수 카운트 갱신
+  function updateCounts() {
+    const tables = Array.from(document.querySelectorAll('.party-list table'))
+                       .filter(tbl => tbl.style.display !== 'none');
+    const completed = tables.filter(tbl => tbl.classList.contains('completed')).length;
+    const pending   = tables.length - completed;
+    const span = document.getElementById('party-counts');
+    if (span) {
+      span.textContent = `미완료 ${pending}개 · 완료 ${completed}개`;
+    }
+  }
   
   // 6) 체크박스/토글 변경 시 상태 저장 및 필터/정렬 적용
   function onStateChange() {
@@ -539,11 +551,12 @@ document.addEventListener('DOMContentLoaded', ()=> {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       checked,
       orMode: modeToggle.checked,
-	  showNonParticipating: showNonParticipating.checked,
+          showNonParticipating: showNonParticipating.checked,
       showCompleted: showCompleted.checked
     }));
     applyFilter();
     applySort();
+    updateCounts();
   }
   document.querySelectorAll('.filter-checkbox').forEach(chk =>
     chk.addEventListener('change', onStateChange)
@@ -551,10 +564,11 @@ document.addEventListener('DOMContentLoaded', ()=> {
   modeToggle.addEventListener('change', onStateChange);
   showNonParticipating.addEventListener('change', onStateChange);
   showCompleted.addEventListener('change', onStateChange);
-  
+
   // 7) 초기 필터 및 정렬 적용
   applyFilter();
   applySort();
+  updateCounts();
 
 
 });
