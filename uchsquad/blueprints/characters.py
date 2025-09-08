@@ -1,8 +1,9 @@
 from flask import Blueprint, render_template, request, redirect, url_for, current_app
 from flask import jsonify
 import subprocess
+import sys
 import os
-from datetime import datetime 
+from datetime import datetime
 
 from db import get_db_connection
 
@@ -167,9 +168,16 @@ def update_score_for_user():
 
     is_updating = True
     try:
-        # 1) 스크립트 실행
+        # 1) 스크립트 실행 (venv 보장, 타임아웃 및 출력 캡처)
         script_path = os.path.join(current_app.root_path, 'scripts', 'update_score.py')
-        subprocess.run(['python', script_path, adventure], check=True, encoding='utf-8')
+        cp = subprocess.run(
+            [sys.executable, script_path, adventure],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=90,
+        )
+        current_app.logger.info("update_score.py stdout: %s", cp.stdout[:2000])
 
         # 2) 실행 성공 시 last_execute 테이블에 기록
         conn = get_db_connection()
@@ -185,7 +193,15 @@ def update_score_for_user():
         conn.commit()
         conn.close()
 
-    except subprocess.CalledProcessError:
+    except subprocess.TimeoutExpired as e:
+        current_app.logger.error("update_score.py timeout: %ss", e.timeout)
+        return redirect(url_for('characters.show_characters',
+                                user_idx=user_idx,
+                                alert='점수 업데이트가 시간 초과되었습니다.'))
+    except subprocess.CalledProcessError as e:
+        current_app.logger.error(
+            "update_score.py failed: rc=%s stderr=%s", e.returncode, e.stderr[:2000]
+        )
         return redirect(url_for('characters.show_characters',
                                 user_idx=user_idx,
                                 alert='점수 업데이트 중 오류가 발생했습니다.'))
