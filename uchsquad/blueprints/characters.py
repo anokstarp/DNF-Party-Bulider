@@ -289,25 +289,46 @@ def swap_order():
     data = request.get_json() or {}
     a_idx = data.get('a')
     b_idx = data.get('b')
-    if not (a_idx and b_idx):
-        return jsonify({'status':'error','msg':'잘못된 요청입니다.'}), 400
+
+    # 클라이언트에서 잘못된 값이 넘어오면 조기에 에러 처리
+    try:
+        a_idx = int(a_idx)
+        b_idx = int(b_idx)
+    except (TypeError, ValueError):
+        return jsonify({'status': 'error', 'msg': '잘못된 요청입니다.'}), 400
 
     conn = get_db_connection()
     # 1) 현재 순서값 읽기
-    row = conn.execute('SELECT display_order FROM user_character WHERE idx=?', (a_idx,)).fetchone()
-    row2 = conn.execute('SELECT display_order FROM user_character WHERE idx=?', (b_idx,)).fetchone()
+    row = conn.execute(
+        'SELECT display_order FROM user_character WHERE idx=?',
+        (a_idx,)
+    ).fetchone()
+    row2 = conn.execute(
+        'SELECT display_order FROM user_character WHERE idx=?',
+        (b_idx,)
+    ).fetchone()
     if not row or not row2:
         conn.close()
-        return jsonify({'status':'error','msg':'존재하지 않는 캐릭터입니다.'}), 404
+        return jsonify({'status': 'error', 'msg': '존재하지 않는 캐릭터입니다.'}), 404
 
     a_order, b_order = row['display_order'], row2['display_order']
-    # 2) 교환
-    conn.execute('UPDATE user_character SET display_order=? WHERE idx=?', (b_order, a_idx))
-    conn.execute('UPDATE user_character SET display_order=? WHERE idx=?', (a_order, b_idx))
+
+    # 2) 두 행을 하나의 쿼리로 동시에 교환하여 중간 상태에서 값이 같아지는 문제를 방지
+    conn.execute(
+        '''
+        UPDATE user_character
+           SET display_order = CASE idx
+                                  WHEN ? THEN ?
+                                  WHEN ? THEN ?
+                                END
+         WHERE idx IN (?, ?)
+        ''',
+        (a_idx, b_order, b_idx, a_order, a_idx, b_idx)
+    )
     conn.commit()
     conn.close()
 
-    return jsonify({'status':'ok'})
+    return jsonify({'status': 'ok'})
 
 
 
