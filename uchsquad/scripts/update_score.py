@@ -215,4 +215,4 @@ if __name__ == '__main__':
 
     # 3) API 호출 및 DB 반영
     fetch_and_update(server_char_tuples)
-    print("DB 업데이트 완료 ✔")
+    print("DB 업데이트 완료")
