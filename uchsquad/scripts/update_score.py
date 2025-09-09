@@ -120,7 +120,6 @@ def upsert_character_history(conn, data, server):
     - 경계 시간을 넘었으면 INSERT (새 이력 생성)
     updated_at은 항상 현재 시간(now)으로 기록
     """
-    print(f"Updating score from API: {data['name']}")
     chara_name = data['name']
     fame_i     = int(data['fame'])
     server_s   = server
@@ -195,10 +194,11 @@ def fetch_and_update(tuples):
             if 'adventure' in data and 'name' in data:
                 upsert_character(conn, data, server, key)
                 upsert_character_history(conn, data, server)
+                print(f"-- {server} : {data['name']} 갱신 완료", flush=True)
             else:
-                print(f"-- {server} : {key} 갱신 실패 (응답 형식 오류)")
+                print(f"-- {server} : {key} 갱신 실패 (응답 형식 오류)", flush=True)
         except requests.RequestException as e:
-            print(f"-- {server} : {key} 갱신 실패 (에러: {e})")
+            print(f"-- {server} : {key} 갱신 실패 (에러: {e})", flush=True)
 
     conn.commit()
     conn.close()

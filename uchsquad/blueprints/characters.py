@@ -168,16 +168,19 @@ def update_score_for_user():
 
     is_updating = True
     try:
-        # 1) 스크립트 실행 (venv 보장, 타임아웃 및 출력 캡처)
+        # 1) 스크립트 실행 (venv 보장, 타임아웃)
         script_path = os.path.join(current_app.root_path, 'scripts', 'update_score.py')
         cp = subprocess.run(
             [sys.executable, script_path, adventure],
             check=True,
-            capture_output=True,
             text=True,
             timeout=90,
         )
-        current_app.logger.info("update_score.py stdout: %s", cp.stdout[:2000])
+        # capture_output=True 로 출력이 숨겨지는 문제를 방지하기 위해
+        # 기본 stdout/stderr 를 사용하여 콘솔에 로그를 표시한다.
+        current_app.logger.info(
+            "update_score.py finished with return code %s", cp.returncode
+        )
 
         # 2) 실행 성공 시 last_execute 테이블에 기록
         conn = get_db_connection()
